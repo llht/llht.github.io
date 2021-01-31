@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="zh-CN,en,default">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.1.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/hantong.me-H.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/hantong.me-H.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/hantong.me-H.png">
+  <link rel="mask-icon" href="/images/hantong.me-H.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('https://blog.hantong.me').hostname,
+    root: '/',
+    scheme: 'Mist',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"hide","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"搜索","hits_empty":"没有找到相关搜索结果 ${query}","hits_stats":"找到约${hits}条结果（用时${time}ms）"}
+    },
+    localsearch: {"enable":false,"trigger":"manual","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="本文介绍了一种使用定点数运算（整数运算）实现计算单精度浮点数加法的一种方法，使用C语言实现于Ubuntu 18.04">
+<meta property="og:type" content="article">
+<meta property="og:title" content="使用定点数运算实现单精度浮点数加法-IEEE754标准">
+<meta property="og:url" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;alu-float-adder&#x2F;index.html">
+<meta property="og:site_name" content="晗桐的个人博客">
+<meta property="og:description" content="本文介绍了一种使用定点数运算（整数运算）实现计算单精度浮点数加法的一种方法，使用C语言实现于Ubuntu 18.04">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;wp-content&#x2F;uploads&#x2F;2019&#x2F;09&#x2F;float.png">
+<meta property="og:image" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;wp-content&#x2F;uploads&#x2F;2019&#x2F;09&#x2F;test-1.jpg">
+<meta property="article:published_time" content="2019-09-27T14:50:38.000Z">
+<meta property="article:modified_time" content="2020-09-03T12:36:53.494Z">
+<meta property="article:author" content="晗桐">
+<meta property="article:tag" content="Linux">
+<meta property="article:tag" content="C语言">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;wp-content&#x2F;uploads&#x2F;2019&#x2F;09&#x2F;float.png">
+
+<link rel="canonical" href="https://blog.hantong.me/alu-float-adder/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>使用定点数运算实现单精度浮点数加法-IEEE754标准 | 晗桐的个人博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">晗桐的个人博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">个人网站 | 思想驻留地</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>时间线</a>
+
+  </li>
+        <li class="menu-item menu-item-messagepad">
+
+    <a href="/messagepad/" rel="section"><i class="fa fa-fw fa-comment"></i>留言板</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://blog.hantong.me/alu-float-adder/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="晗桐">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="晗桐的个人博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          使用定点数运算实现单精度浮点数加法-IEEE754标准
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-09-27 22:50:38" itemprop="dateCreated datePublished" datetime="2019-09-27T22:50:38+08:00">2019-09-27</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-09-03 20:36:53" itemprop="dateModified" datetime="2020-09-03T20:36:53+08:00">2020-09-03</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index">
+                    <span itemprop="name">技术</span>
+                  </a>
+                </span>
+            </span>
+
+          
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="fa fa-comment-o"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/alu-float-adder/#comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/alu-float-adder/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-file-word-o"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>7.4k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-clock-o"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>7 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>本文介绍了一种使用定点数运算（整数运算）实现计算单精度浮点数加法的一种方法，使用C语言实现于<code>Ubuntu 18.04</code></p>
+<a id="more"></a>
+<p>由于穷举所有浮点数加法情况所需时间是个天文数字，只经过$4794967295$次运算测试，运算结果各位均与直接调用C语言浮点数加法操作符结果相同，可以保证算法的可靠性。<a href="https://github.com/llht/float_adder" target="_blank" rel="noopener">Github源码地址</a></p>
+<h3 id="浮点数加法原理简释"><a href="#浮点数加法原理简释" class="headerlink" title="浮点数加法原理简释"></a>浮点数加法原理简释</h3><h4 id="单精度浮点数表示"><a href="#单精度浮点数表示" class="headerlink" title="单精度浮点数表示"></a>单精度浮点数表示</h4><p>IEEE 754标准制定的单精度浮点数的二进制表示示例如下（<a href="http://lipas.uwasa.fi/~TAU/AUTO1010/slides.php?Mode=NoFrame&File=0210Float.txt&Page=-1&MicroExam=On&Images=Own&Menu=Off" target="_blank" rel="noopener">图片来源</a>）：</p>
+<p><img src="/wp-content/uploads/2019/09/float.png" alt=""></p>
+<p>一个单精度浮点数由符号位（sign）、阶码（exponent）与尾数（fraction）所共同组成，其中规格化数尾数部分最高位含有隐藏位1，由这种方法表示的浮点数共有五种表示与解读方法，一个简单的示例表如下：</p>
+<table>
+<thead>
+<tr>
+<th>名称</th>
+<th>二进制表示</th>
+<th>表示范围</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>+0/-0</td>
+<td>全0阶码全0尾数</td>
+<td>+0/-0</td>
+<td>0x00000000 | +0</td>
+</tr>
+<tr>
+<td>非规格化数</td>
+<td>全0阶码非0尾数</td>
+<td>$(-1)^{s}×0.f×2^{-126}$</td>
+<td>0x00400000 | $1×0.5×2^{-126}$</td>
+</tr>
+<tr>
+<td>+∞/-∞</td>
+<td>全1阶码全0尾数</td>
+<td>+∞/-∞</td>
+<td>0x7f800000 | +∞</td>
+</tr>
+<tr>
+<td>NaN（Not a Number 非数）</td>
+<td>全1阶码非0尾数</td>
+<td>SNaN（发信号）/QNaN（静止的）</td>
+<td>0x7fc00000 | QNaN</td>
+</tr>
+<tr>
+<td>规格化非0数</td>
+<td>阶码非全0且非全1</td>
+<td>$(-1)^{s}×1.f×2^{e-127}$</td>
+<td>如前</td>
+</tr>
+</tbody></table>
+<h4 id="单精度浮点数加法"><a href="#单精度浮点数加法" class="headerlink" title="单精度浮点数加法"></a>单精度浮点数加法</h4><p>处理两个单精度浮点数加法时，需要进行以下几个步骤：</p>
+<h5 id="处理特殊情况（corner-cases）"><a href="#处理特殊情况（corner-cases）" class="headerlink" title="处理特殊情况（corner cases）"></a>处理特殊情况（corner cases）</h5><p>开始进行加法时，我们拿到的可能不是通常意义上的小数，两个加数的值可能是Inf（无穷）、Zero（正0或负0）甚至NaN（非数），将这三种值统称为<strong>特殊值</strong>，对于这些特殊情况，IEEE754标准给出了相对应的计算标准，列表如下：</p>
+<table>
+<thead>
+<tr>
+<th>加数均为0</th>
+<th>计算结果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>两个数都为+0</td>
+<td>+0</td>
+</tr>
+<tr>
+<td>两个数都为-0</td>
+<td>-0</td>
+</tr>
+<tr>
+<td>其中一个为+0，另一个为-0</td>
+<td>+0</td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>加数均为Inf（无穷）</th>
+<th>计算结果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>正无穷+负无穷</td>
+<td>负无穷</td>
+</tr>
+<tr>
+<td>负无穷+正无穷</td>
+<td>正无穷</td>
+</tr>
+<tr>
+<td>正无穷+正无穷</td>
+<td>正无穷</td>
+</tr>
+<tr>
+<td>负无穷+负无穷</td>
+<td>负无穷</td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>其中一个为Inf（无穷），另一个为NaN（非数）</th>
+<th>计算结果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>同上</td>
+<td>加数中的非数设置为QNaN的结果</td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>加数均为NaN（非数）</th>
+<th>计算结果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>同上</td>
+<td>置第二个加数为QNaN，并返回</td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>其中一个加数为特殊值，另一个为非特殊值</th>
+<th>计算结果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>特殊值为0</td>
+<td>返回非特殊值</td>
+</tr>
+<tr>
+<td>特殊值为NaN</td>
+<td>置NaN为QNaN，返回该QNaN</td>
+</tr>
+<tr>
+<td>特殊值为Inf</td>
+<td>返回该Inf</td>
+</tr>
+</tbody></table>
+<p>这些特殊情况在算法中均有体现。</p>
+<h5 id="对阶"><a href="#对阶" class="headerlink" title="对阶"></a>对阶</h5><p>开始进行尾数相加时，首先调整较小的阶与较大的阶对齐（防止精度损失过大，不调整较大阶）</p>
+<h5 id="尾数相加"><a href="#尾数相加" class="headerlink" title="尾数相加"></a>尾数相加</h5><p>为了保证计算精度精度，首先需将尾数左移保留附加位，（guard、round与sticky位），再进行相加，这三位分别称为保护位、舍入位和粘位，在后续的尾数舍入处理时进行舍入。由于在IEEE754标准中，尾数均为源码表示，所以进行尾数保留附加位后需根据加数的符号将尾数转化为补码表示后再进行相加。</p>
+<h5 id="尾数规格化"><a href="#尾数规格化" class="headerlink" title="尾数规格化"></a>尾数规格化</h5><p>保留附加位后的尾数长度为1（隐藏位）+23（尾数）+3（附加位） = 27位，相加后的尾数可能会发生较大变化，需要通过左规或者右规调整尾数长度，使之符合尾数长度要求，在左规和右规过程中要密切关注阶码的溢出问题，详细的规格化过程在后续的代码解读中进行阐释</p>
+<h5 id="尾数的舍入处理"><a href="#尾数的舍入处理" class="headerlink" title="尾数的舍入处理"></a>尾数的舍入处理</h5><p>IEEE 754标准提供了多种附加位的舍入方法，在我进行的实验平台上，采用<strong>就近舍入到偶数</strong>的方法，舍入后，需要再次判断最高位是否有进位并进行再次规格化</p>
+<h3 id="代码解读"><a href="#代码解读" class="headerlink" title="代码解读"></a>代码解读</h3><h4 id="浮点数表示"><a href="#浮点数表示" class="headerlink" title="浮点数表示"></a>浮点数表示</h4><p>为了方便将浮点数各部分转化为定点数（整数）进行运算，定义一个<code>union</code>类型保存浮点数, 定义于<code>float.h</code>中:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="keyword">union</span> &#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span></span></span><br><span class="line"><span class="class">	&#123;</span></span><br><span class="line">		<span class="keyword">uint32_t</span> fraction : <span class="number">23</span>;  <span class="comment">//尾数</span></span><br><span class="line">		<span class="keyword">uint32_t</span> exponent : <span class="number">8</span>;   <span class="comment">//阶数</span></span><br><span class="line">		<span class="keyword">uint32_t</span> sign : <span class="number">1</span>;       <span class="comment">//符号位</span></span><br><span class="line">	&#125;;</span><br><span class="line">	<span class="keyword">float</span> fval;                  <span class="comment">//解释为浮点数</span></span><br><span class="line">	<span class="keyword">uint32_t</span> val;                <span class="comment">//解释为无符号整型</span></span><br><span class="line">&#125; FLOAT;</span><br></pre></td></tr></table></figure>
+
+<p>由于我的电脑采用小端方式保存数据, 所以取的尾数, 阶数和符号位顺序如上所示, 采用<code>union</code>类型保存浮点数, 可以方便我直接操作浮点数的各部分并打印查看</p>
+<h4 id="特殊情况处理"><a href="#特殊情况处理" class="headerlink" title="特殊情况处理"></a>特殊情况处理</h4><p>定义浮点数加法函数<code>float_add</code>, 设置<code>FLOAT.val</code>为函数参数, 同时返回一个无符号整型作为计算结果, 定义与实现均在<code>float.c</code>中</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">uint32_t</span> float_add(<span class="keyword">uint32_t</span> a, <span class="keyword">uint32_t</span> b)</span><br></pre></td></tr></table></figure>
+
+<p>根据前一部分原理阐释, 我把所有浮点数加法中的特殊情况分为四种, 分别对四种情况进行了处理:</p>
+<p><strong>情形1</strong>: 两数都为0或者两数都为无穷, 由于结果的确定性, 我将所有情况都定义在了一个结构类型<code>corner_add[]</code>中, 位于<code>float_add</code>函数的上方, 其中每种情况<code>CORNER_CASE_RULE</code>的三个参数表明了这种情况的加数以及结果:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// float.h</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">	<span class="keyword">uint32_t</span> a;</span><br><span class="line">	<span class="keyword">uint32_t</span> b;</span><br><span class="line">	<span class="keyword">uint32_t</span> res;</span><br><span class="line">&#125; CORNER_CASE_RULE;</span><br><span class="line"></span><br><span class="line"><span class="comment">// float.c</span></span><br><span class="line">CORNER_CASE_RULE corner_add[] = &#123;</span><br><span class="line">	&#123;P_ZERO_F, P_ZERO_F, P_ZERO_F&#125;,</span><br><span class="line">	&#123;N_ZERO_F, P_ZERO_F, P_ZERO_F&#125;,</span><br><span class="line">	&#123;P_ZERO_F, N_ZERO_F, P_ZERO_F&#125;,</span><br><span class="line">	&#123;N_ZERO_F, N_ZERO_F, N_ZERO_F&#125;,</span><br><span class="line">	</span><br><span class="line">	&#123;P_INF_F, N_INF_F, N_NAN_F&#125;,</span><br><span class="line">	&#123;N_INF_F, P_INF_F, N_NAN_F&#125;,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>循环判断加数类型, 并将得到的结果返回, 若不属于这些类型, 则退出到下一个情形:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> i = <span class="number">0</span>;</span><br><span class="line"><span class="keyword">for</span> (; i &lt; <span class="keyword">sizeof</span>(corner_add) / <span class="keyword">sizeof</span>(CORNER_CASE_RULE); i++)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">if</span> (a == corner_add[i].a &amp;&amp; b == corner_add[i].b)</span><br><span class="line">		<span class="keyword">return</span> corner_add[i].res;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>情形2</strong>: 加数为NaN和Inf, 直接返回非数, 需要先将非数置为SNaN</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (isINF(a) &amp;&amp; isNaN(b))</span><br><span class="line">	<span class="keyword">return</span> (b | (<span class="keyword">uint32_t</span>)<span class="number">0x400000</span>);</span><br><span class="line"></span><br><span class="line"><span class="keyword">else</span> <span class="keyword">if</span> (isINF(b) &amp;&amp; isNaN(a))</span><br><span class="line">	<span class="keyword">return</span> (a | (<span class="keyword">uint32_t</span>)<span class="number">0x400000</span>);</span><br></pre></td></tr></table></figure>
+
+<p><strong>情形3</strong>: 其中一个数为0, 另一个为非零</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (a == P_ZERO_F || a == N_ZERO_F)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">if</span> (isNaN(b))</span><br><span class="line">		<span class="keyword">return</span> (b | (<span class="keyword">uint32_t</span>)<span class="number">0x400000</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (b == P_ZERO_F || b == N_ZERO_F)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">if</span> (isNaN(a))</span><br><span class="line">		<span class="keyword">return</span> (a | (<span class="keyword">uint32_t</span>)<span class="number">0x400000</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>需要注意的是, 如果另一个数为非数, 则需要将其处理为SNaN后再返回, 否则直接返回另一个数</p>
+<p><strong>情形4</strong>: 其中一个加数为无穷或者非数, 另一个非特殊值</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (fb.exponent == <span class="number">0xff</span>)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">if</span> (isNaN(fb.val))</span><br><span class="line">		fb.val|= <span class="number">0x400000</span>;</span><br><span class="line">	<span class="keyword">return</span> fb.val;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (fa.exponent == <span class="number">0xff</span>)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">if</span> (isNaN(fa.val))</span><br><span class="line">		fa.val |= <span class="number">0x400000</span>;</span><br><span class="line">	<span class="keyword">return</span> fa.val;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>需要返回这个无穷数或者非数</p>
+<h4 id="对阶-1"><a href="#对阶-1" class="headerlink" title="对阶"></a>对阶</h4><p>根据两个加数的大小关系进行对阶, 需要注意的是, 应首先将隐藏位以及附加位添加给尾数, 方便在改变阶数的过程中确保尾数变化的精度, 详细对阶过程解读见下方:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 调整fa的阶数为较小阶</span></span><br><span class="line"><span class="keyword">if</span> (fa.exponent &gt; fb.exponent)</span><br><span class="line">&#123;</span><br><span class="line">	fa.val = b;</span><br><span class="line">	fb.val = a;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 添加隐藏位1</span></span><br><span class="line"><span class="keyword">uint32_t</span> sig_a, sig_b, sig_res;</span><br><span class="line">sig_a = fa.fraction;</span><br><span class="line"><span class="keyword">if</span> (fa.exponent != <span class="number">0</span>)</span><br><span class="line">	sig_a |= <span class="number">0x800000</span>; <span class="comment">// the hidden 1</span></span><br><span class="line">sig_b = fb.fraction;</span><br><span class="line"><span class="keyword">if</span> (fb.exponent != <span class="number">0</span>)</span><br><span class="line">	sig_b |= <span class="number">0x800000</span>; <span class="comment">// the hidden 1</span></span><br><span class="line"><span class="comment">// 根据阶码的规格化或非规格化计算阶码的差, 由于偏置数的存在, 只需要使用原码计算即可</span></span><br><span class="line"><span class="comment">// alignment shift for fa</span></span><br><span class="line"><span class="keyword">uint32_t</span> shift = <span class="number">0</span>;</span><br><span class="line">shift = (fb.exponent == <span class="number">0</span> ? fb.exponent + <span class="number">1</span> : fb.exponent) - (fa.exponent == <span class="number">0</span> ?fa.exponent + <span class="number">1</span> : fa.exponent);</span><br><span class="line"><span class="comment">// 添加几个附加位</span></span><br><span class="line">sig_a = (sig_a &lt;&lt; <span class="number">3</span>); <span class="comment">// guard, round, sticky	</span></span><br><span class="line">sig_b = (sig_b &lt;&lt; <span class="number">3</span>);</span><br><span class="line"><span class="comment">// 对阶, 并注意移动尾数使之保持与阶码的对应性</span></span><br><span class="line"><span class="keyword">uint32_t</span> sticky = <span class="number">0</span>;</span><br><span class="line"><span class="keyword">while</span> (shift &gt; <span class="number">0</span>)</span><br><span class="line">&#123;</span><br><span class="line">	sticky = sticky | (sig_a &amp; <span class="number">0x1</span>);</span><br><span class="line">	sig_a = sig_a &gt;&gt; <span class="number">1</span>;</span><br><span class="line">	sig_a |= sticky;</span><br><span class="line">	shift--;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="尾数相加-1"><a href="#尾数相加-1" class="headerlink" title="尾数相加"></a>尾数相加</h4><p>阶码对接完成后, 需要注意根据浮点数的符号将尾数相加, 负数应转化为补码进行计算, 同时尾数相加可能会超出32位, 所以采用64位无符号整型进行存储:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 根据符号将尾数转化为补码表示</span></span><br><span class="line"><span class="keyword">if</span> (fa.sign)</span><br><span class="line">&#123;</span><br><span class="line">	sig_a *= <span class="number">-1</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">if</span> (fb.sign)</span><br><span class="line">&#123;</span><br><span class="line">	sig_b *= <span class="number">-1</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 准化为补码后相加</span></span><br><span class="line">sig_res = sig_a + sig_b;</span><br><span class="line"><span class="comment">// 根据尾数符号再次将尾数转化为原码</span></span><br><span class="line"><span class="keyword">if</span> (sign(sig_res))</span><br><span class="line">&#123;</span><br><span class="line">	f.sign = <span class="number">1</span>;</span><br><span class="line">	sig_res *= <span class="number">-1</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">&#123;	</span><br><span class="line">    f.sign = <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>尾数相加结束后, 再将结果的阶码设置为大的阶码</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">uint32_t</span> exp_res = fb.exponent;</span><br></pre></td></tr></table></figure>
+
+<p>此时以基本完成了结果的给出, 最后一步再将得到的结果规格化为32位表示即可</p>
+<h4 id="尾数规格化-1"><a href="#尾数规格化-1" class="headerlink" title="尾数规格化"></a>尾数规格化</h4><p>在<code>float.c</code>中, 我定义了一个规格化函数完成最后对尾数的规格化处理</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">uint32_t</span> normalize(<span class="keyword">uint32_t</span> sign, <span class="keyword">int32_t</span> <span class="built_in">exp</span>, <span class="keyword">uint64_t</span> sig_grs)</span><br></pre></td></tr></table></figure>
+
+<p>该函数返回规格化完成的32位数, 将该返回值解释为浮点数即完成了完整的浮点数加法过程</p>
+<p>为了体现在规格化过程中对特殊情况的处理, 我定义了一个bool类型对溢出进行判断, 由于C语言缺少bool类型, 我使用宏定义进行表示:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// float.h</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="keyword">enum</span> &#123; <span class="literal">false</span>, <span class="literal">true</span> &#125; <span class="keyword">bool</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// float.c</span></span><br><span class="line"><span class="keyword">uint32_t</span> normalize(<span class="keyword">uint32_t</span> sign, <span class="keyword">int32_t</span> <span class="built_in">exp</span>, <span class="keyword">uint64_t</span> sig_grs)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">bool</span> <span class="built_in">overflow</span> = <span class="literal">false</span>; </span><br><span class="line">	.......</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>规格化分为左规和右规, 若尾数超出27位, 需要右规, 在右规过程中需要对阶码上溢进行处理, 若发生阶码上溢, 则需要置结果为正无穷</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> ((sig_grs &gt;&gt; (<span class="number">23</span> + <span class="number">3</span>)) &gt; <span class="number">1</span> || <span class="built_in">exp</span> &lt; <span class="number">0</span>)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="comment">// 右规并根据移出的位设置粘位(Sticky), 若粘位右边有1, 则置为1</span></span><br><span class="line">	<span class="keyword">uint32_t</span> sticky = sig_grs &amp; <span class="number">0x1</span>;	</span><br><span class="line">	<span class="keyword">while</span> (((sig_grs &gt;&gt; (<span class="number">23</span> + <span class="number">3</span>)) &gt; <span class="number">1</span>) &amp;&amp; <span class="built_in">exp</span> &lt; <span class="number">0xff</span>)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="comment">// shift right and pay attention to sticker bit</span></span><br><span class="line">		sticky = sticky | (sig_grs &amp; <span class="number">0x1</span>);</span><br><span class="line">		sig_grs = sig_grs &gt;&gt; <span class="number">1</span>;</span><br><span class="line">		sig_grs |= sticky;</span><br><span class="line">		<span class="built_in">exp</span>++;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="comment">//如果溢出了, 置结果为正无穷即可</span></span><br><span class="line">	<span class="keyword">if</span> (<span class="built_in">exp</span> &gt;= <span class="number">0xff</span>)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="comment">// assign the number to infinity</span></span><br><span class="line">		<span class="built_in">exp</span> = <span class="number">0xff</span>;</span><br><span class="line">		sig_grs = <span class="number">0</span>;	</span><br><span class="line">		<span class="built_in">overflow</span> = <span class="literal">true</span>;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>如果小于27位, 则需要对尾数进行左规, 需要注意的是, 如果阶码降为0, 则根据IEEE 754标准, 则需要右规一次以消除粘位, 达到<code>0.f</code>的效果</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">else</span> <span class="keyword">if</span> (((sig_grs &gt;&gt; (<span class="number">23</span> + <span class="number">3</span>)) == <span class="number">0</span>) &amp;&amp; <span class="built_in">exp</span> &gt; <span class="number">0</span>)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">while</span> (((sig_grs &gt;&gt; (<span class="number">23</span> + <span class="number">3</span>)) == <span class="number">0</span>) &amp;&amp; <span class="built_in">exp</span> &gt; <span class="number">0</span>)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="comment">// 左规</span></span><br><span class="line">		sig_grs = sig_grs &lt;&lt; <span class="number">1</span>;</span><br><span class="line">		<span class="built_in">exp</span>--;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">if</span> (<span class="built_in">exp</span> == <span class="number">0</span>)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="comment">// 右规一次</span></span><br><span class="line">		<span class="keyword">if</span>((sig_grs &amp; <span class="number">0x1</span>) == <span class="number">1</span>)	</span><br><span class="line">        &#123;</span><br><span class="line">			sig_grs = sig_grs &gt;&gt; <span class="number">1</span>;</span><br><span class="line">			<span class="comment">// keep the sticker</span></span><br><span class="line">			sig_grs = sig_grs | <span class="number">0x1</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">else</span> <span class="keyword">if</span>((sig_grs &amp; <span class="number">0x1</span>) == <span class="number">0</span>)</span><br><span class="line">		&#123;</span><br><span class="line">			sig_grs = sig_grs &gt;&gt; <span class="number">1</span>;</span><br><span class="line">			sig_grs = sig_grs &amp; <span class="number">0xfffffffe</span>;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>最后一种情况是两个非规格化数相加后变为规格化数, 需要进行额外处理</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">else</span> <span class="keyword">if</span> (<span class="built_in">exp</span> == <span class="number">0</span> &amp;&amp; sig_grs &gt;&gt; (<span class="number">23</span> + <span class="number">3</span>) == <span class="number">1</span>)</span><br><span class="line">&#123;	</span><br><span class="line">    <span class="comment">// two denormals result in a normal</span></span><br><span class="line">	<span class="built_in">exp</span>++;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="尾数舍入处理"><a href="#尾数舍入处理" class="headerlink" title="尾数舍入处理"></a>尾数舍入处理</h4><p>规格化完成, 最后一步就是舍入三个附加位了(g, r, s), 如果结果没有溢出, 则进行舍入, 按照<strong>就近舍入到偶数</strong>的方式进行舍入, 需要注意的是, 如果舍入的过程中发生了尾数再次加一位, 则需要进行再次右规, 同时在右规的过程中要再次判断是否发生了溢出:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (!<span class="built_in">overflow</span>)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="comment">// 根据GRS位的大小进行舍入</span></span><br><span class="line">	<span class="keyword">uint32_t</span> GRS = sig_grs &amp; <span class="number">0x7</span>;</span><br><span class="line">	<span class="keyword">uint32_t</span> closeGRS = (sig_grs &amp; <span class="number">0x8</span>) &gt;&gt; <span class="number">3</span>;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span>(GRS == <span class="number">4</span> &amp;&amp; closeGRS == <span class="number">1</span>)</span><br><span class="line">		sig_grs += <span class="number">8</span>;</span><br><span class="line">	<span class="keyword">else</span> <span class="keyword">if</span> (GRS == <span class="number">4</span> &amp;&amp; closeGRS == <span class="number">0</span>)</span><br><span class="line">		sig_grs = sig_grs + <span class="number">0</span>;</span><br><span class="line">	<span class="keyword">else</span> <span class="keyword">if</span> (GRS &gt; <span class="number">4</span>)</span><br><span class="line">		sig_grs += <span class="number">8</span>;</span><br><span class="line">	<span class="keyword">else</span> <span class="keyword">if</span> (GRS &lt; <span class="number">4</span>)</span><br><span class="line">		sig_grs = sig_grs + <span class="number">0</span>;</span><br><span class="line">	<span class="comment">// 舍入后删掉GRS位</span></span><br><span class="line">	sig_grs = sig_grs &gt;&gt; <span class="number">3</span>;</span><br><span class="line">	<span class="comment">//尾数加一位, 需要再次右规	</span></span><br><span class="line">	<span class="keyword">if</span>((sig_grs &gt;&gt; (<span class="number">23</span>)) &gt; <span class="number">1</span>)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="comment">// shift right</span></span><br><span class="line">		sig_grs = sig_grs &gt;&gt; <span class="number">1</span>;</span><br><span class="line">		<span class="built_in">exp</span>++;</span><br><span class="line">		<span class="comment">//如果溢出了, 置为溢出</span></span><br><span class="line">		<span class="keyword">if</span>((<span class="built_in">exp</span> &amp; <span class="number">0xff</span>) == <span class="number">0xff</span>)</span><br><span class="line">			<span class="built_in">overflow</span> = <span class="literal">true</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	<span class="comment">// 最后一步把隐藏位去掉</span></span><br><span class="line">	sig_grs = sig_grs &amp; <span class="number">0x7fffff</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>完成上述所有步骤, 我们就得到了结果的尾数 | 阶码值, 再加上符号数值, 我们就可以构造结果并返回了</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">FLOAT f;</span><br><span class="line">f.sign = sign;</span><br><span class="line">f.exponent = (<span class="keyword">uint32_t</span>)(<span class="built_in">exp</span> &amp; <span class="number">0xff</span>);</span><br><span class="line">f.fraction = sig_grs;</span><br><span class="line"><span class="keyword">return</span> f.val;</span><br></pre></td></tr></table></figure>
+
+<p>以上所有的函数以及常量声明等都定义在<code>float.h</code>以及<code>float.c</code>中</p>
+<h3 id="测试原理及结果"><a href="#测试原理及结果" class="headerlink" title="测试原理及结果"></a>测试原理及结果</h3><p>完成第二部分的所有步骤, 我们就得到了一个可以计算浮点数加法的定点数计算器, 它是一个函数:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">uint32_t</span> float_add(<span class="keyword">uint32_t</span> a, <span class="keyword">uint32_t</span> b)</span><br></pre></td></tr></table></figure>
+
+<p>我们需要构造尽可能多的浮点数对, 通过直接使用<code>float a + float b</code>与使用<code>float_add(float a, float b)</code>进行结果对比, 来验证我们的计算器的可靠性, 测试main函数定义在<code>test.c</code>中. 原理很简单, 通过不断构造随机的”浮点数”, 并比较两种方式结果的全部32位来进行判断, 如果足够多的测试结果都证明是正确的, 那么就可以说明我们的计算器是可靠的, 在<code>test.c</code>中, 我一共比较了$0xffffffff = 4294967295$次计算结果, 全部正确</p>
+<p><code>test.c</code>代码及其测试结果截图见下:<br><img src="/wp-content/uploads/2019/09/test-1.jpg" alt=""></p>
+<h3 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h3><p>[1]. 袁春风, 余子濠. <em>《计算机系统基础》</em> 第二版. 机械工业出版社. 2018年8月.<br>[2]. 方元, 彭成磊. <em>《数字系统II补充教材》</em> 南京大学电子科学与工程学院. 2019年夏.<br>[3]. Bryant, Randal. O’Hallaron, David. <em>Computer Systems A Programmer’s Perspective</em>. Third Edition, CMP, 2016.<br>[4]. Prof. W. Kahan. <em>Lecture Notes on the Status of IEEE Standard 754 for Binary Floating-Point Arithmetic</em>. Elect. Eng. &amp; Computer Science, 1997.<br>[5]. Hollasch, Steve. <em>IEEE Standard 754 Floating Point Numbers</em>, 08/24/2018.</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>晗桐
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="https://blog.hantong.me/alu-float-adder/" title="使用定点数运算实现单精度浮点数加法-IEEE754标准">https://blog.hantong.me/alu-float-adder/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/zh-CN" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Linux/" rel="tag"># Linux</a>
+              <a href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag"># C语言</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/berkeley-12hours/" rel="prev" title="伯克利十二时辰">
+      <i class="fa fa-chevron-left"></i> 伯克利十二时辰
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/csapp-datalab/" rel="next" title="CS:APP-Datalab 题目及源码">
+      CS:APP-Datalab 题目及源码 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#浮点数加法原理简释"><span class="nav-number">1.</span> <span class="nav-text">浮点数加法原理简释</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#单精度浮点数表示"><span class="nav-number">1.1.</span> <span class="nav-text">单精度浮点数表示</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#单精度浮点数加法"><span class="nav-number">1.2.</span> <span class="nav-text">单精度浮点数加法</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#处理特殊情况（corner-cases）"><span class="nav-number">1.2.1.</span> <span class="nav-text">处理特殊情况（corner cases）</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#对阶"><span class="nav-number">1.2.2.</span> <span class="nav-text">对阶</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#尾数相加"><span class="nav-number">1.2.3.</span> <span class="nav-text">尾数相加</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#尾数规格化"><span class="nav-number">1.2.4.</span> <span class="nav-text">尾数规格化</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#尾数的舍入处理"><span class="nav-number">1.2.5.</span> <span class="nav-text">尾数的舍入处理</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#代码解读"><span class="nav-number">2.</span> <span class="nav-text">代码解读</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#浮点数表示"><span class="nav-number">2.1.</span> <span class="nav-text">浮点数表示</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#特殊情况处理"><span class="nav-number">2.2.</span> <span class="nav-text">特殊情况处理</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#对阶-1"><span class="nav-number">2.3.</span> <span class="nav-text">对阶</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#尾数相加-1"><span class="nav-number">2.4.</span> <span class="nav-text">尾数相加</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#尾数规格化-1"><span class="nav-number">2.5.</span> <span class="nav-text">尾数规格化</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#尾数舍入处理"><span class="nav-number">2.6.</span> <span class="nav-text">尾数舍入处理</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#测试原理及结果"><span class="nav-number">3.</span> <span class="nav-text">测试原理及结果</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#参考资料"><span class="nav-number">4.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="晗桐"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">晗桐</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">31</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">15</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/llht" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;llht" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:hantongliu@outlook.com" title="E-Mail → mailto:hantongliu@outlook.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/zh-CN" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      快速访问
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="/booklist" title="&#x2F;booklist">书单</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="/footprint-map" title="&#x2F;footprint-map">足迹</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">晗桐</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-area-chart"></i>
+    </span>
+    <span title="站点总字数">105k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">1:35</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.1.1
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+      
+<script type="text/x-mathjax-config">
+
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$', '$'], ['\\(', '\\)'] ],
+      processEscapes: true,
+      skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+    },
+    TeX: {
+      equationNumbers: {
+        autoNumber: 'AMS'
+      }
+    }
+  });
+
+  MathJax.Hub.Register.StartupHook('TeX Jax Ready', function() {
+    MathJax.InputJax.TeX.prefilterHooks.Add(function(data) {
+      if (data.display) {
+        var next = data.script.nextSibling;
+        while (next && next.nodeName.toLowerCase() === '#text') {
+          next = next.nextSibling;
+        }
+        if (next && next.nodeName.toLowerCase() === 'br') {
+          next.parentNode.removeChild(next);
+        }
+      }
+    });
+  });
+
+  MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for (i = 0; i < all.length; i += 1) {
+      element = document.getElementById(all[i].inputID + '-Frame').parentNode;
+      if (element.nodeName.toLowerCase() == 'li') {
+        element = element.parentNode;
+      }
+      element.classList.add('has-jax');
+    }
+  });
+</script>
+<script>
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-AMS-MML_HTMLorMML', () => {
+    MathJax.Hub.Typeset();
+  }, window.MathJax);
+</script>
+
+    
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el: '#valine-comments',
+      verify: false,
+      notify: true,
+      appId: 'jvA4ciAnRp02XTuSobk8znDa-gzGzoHsz',
+      appKey: 'NOK2Kbeecc2vA8L6VHwNmWEO',
+      placeholder: "欢迎交流~",
+      avatar: 'mm',
+      meta: guest,
+      pageSize: '10' || 10,
+      visitor: false,
+      lang: 'zh-cn' || 'zh-cn',
+      path: location.pathname,
+      recordIP: false,
+      serverURLs: ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

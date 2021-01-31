@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN,en,default">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.1.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/hantong.me-H.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/hantong.me-H.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/hantong.me-H.png">
+  <link rel="mask-icon" href="/images/hantong.me-H.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('https://blog.hantong.me').hostname,
+    root: '/',
+    scheme: 'Mist',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"hide","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"搜索","hits_empty":"没有找到相关搜索结果 ${query}","hits_stats":"找到约${hits}条结果（用时${time}ms）"}
+    },
+    localsearch: {"enable":false,"trigger":"manual","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="问题引入最近在使用gitPython时发生了一个奇怪的事情，在使用git diff &lt;commit&gt;对我某课程项目两个相邻commit记录进行比较时，产生了以下结果：  从运行结果可以清楚地看到，我在0秒内，对多个文件做出了多达数十行的更改，包括删除和添加，我深知这是不可能的，并且我也没有短时间内更改多个文件的回忆，一定是哪里出了问题。 commit频率过高？因为此课程项目有&lt;编">
+<meta property="og:type" content="article">
+<meta property="og:title" content="从git diff指令奇异结果到Git内部原理">
+<meta property="og:url" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;gitdiff-to-internal&#x2F;index.html">
+<meta property="og:site_name" content="晗桐的个人博客">
+<meta property="og:description" content="问题引入最近在使用gitPython时发生了一个奇怪的事情，在使用git diff &lt;commit&gt;对我某课程项目两个相邻commit记录进行比较时，产生了以下结果：  从运行结果可以清楚地看到，我在0秒内，对多个文件做出了多达数十行的更改，包括删除和添加，我深知这是不可能的，并且我也没有短时间内更改多个文件的回忆，一定是哪里出了问题。 commit频率过高？因为此课程项目有&lt;编">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;images&#x2F;gitdiff-to-internal&#x2F;git-diff-commit.png">
+<meta property="og:image" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;images&#x2F;gitdiff-to-internal&#x2F;gitadd-to-gitcommit.png">
+<meta property="og:image" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;images&#x2F;gitdiff-to-internal&#x2F;git-diff-commit.png">
+<meta property="og:image" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;images&#x2F;gitdiff-to-internal&#x2F;git-diff-commit-r.png">
+<meta property="article:published_time" content="2020-01-18T12:30:35.000Z">
+<meta property="article:modified_time" content="2020-09-03T12:36:53.716Z">
+<meta property="article:author" content="晗桐">
+<meta property="article:tag" content="git">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;images&#x2F;gitdiff-to-internal&#x2F;git-diff-commit.png">
+
+<link rel="canonical" href="https://blog.hantong.me/gitdiff-to-internal/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>从git diff指令奇异结果到Git内部原理 | 晗桐的个人博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">晗桐的个人博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">个人网站 | 思想驻留地</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>时间线</a>
+
+  </li>
+        <li class="menu-item menu-item-messagepad">
+
+    <a href="/messagepad/" rel="section"><i class="fa fa-fw fa-comment"></i>留言板</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://blog.hantong.me/gitdiff-to-internal/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="晗桐">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="晗桐的个人博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          从git diff指令奇异结果到Git内部原理
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-01-18 20:30:35" itemprop="dateCreated datePublished" datetime="2020-01-18T20:30:35+08:00">2020-01-18</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-09-03 20:36:53" itemprop="dateModified" datetime="2020-09-03T20:36:53+08:00">2020-09-03</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index">
+                    <span itemprop="name">技术</span>
+                  </a>
+                </span>
+            </span>
+
+          
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="fa fa-comment-o"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/gitdiff-to-internal/#comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/gitdiff-to-internal/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-file-word-o"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>2.6k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-clock-o"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>2 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="问题引入"><a href="#问题引入" class="headerlink" title="问题引入"></a>问题引入</h3><p>最近在使用<code>gitPython</code>时发生了一个奇怪的事情，在使用<code>git diff &lt;commit&gt;</code>对我某课程项目两个相邻<code>commit</code>记录进行比较时，产生了以下结果：</p>
+<p><img src="/images/gitdiff-to-internal/git-diff-commit.png" alt=""></p>
+<p>从运行结果可以清楚地看到，我在0秒内，对多个文件做出了多达数十行的更改，包括删除和添加，我深知这是不可能的，并且我也没有短时间内更改多个文件的回忆，一定是哪里出了问题。</p>
+<h3 id="commit频率过高？"><a href="#commit频率过高？" class="headerlink" title="commit频率过高？"></a>commit频率过高？</h3><p><del>因为此课程项目有<strong>&lt;编译一次、<code>commit</code>一次&gt;</strong>以及<strong>&lt;每分钟<code>commit</code>一次&gt;</strong>的约定，所以可能会出现同时产生多个<code>commit</code>的程序行为，于是我首先将问题归咎于较高的<code>commit</code>频率：有可能是<code>commit</code>频率过高，所以即使两个<code>commit</code>是连续进行的，他们可能变成了一个<code>commit</code>，所以产生的结果就是短时间看起来更改了很多东西。</del>不过稍微推敲一下就知道这纯粹是我形而上的推论，而且模糊不清解释不了任何东西，我开始从该指令的目的开始，然后到Git的内部原理，逐渐找到了该现象产生的原因。</p>
+<h3 id="Git中的objects"><a href="#Git中的objects" class="headerlink" title="Git中的objects"></a>Git中的objects</h3><p>简单地说来，Git是通过不同的object，以及object之间的指向关系构成的一个图来进行版本控制的，这个图通常是DAG（有向无环）图，因为显然你无法形成一个环形的版本迭代路线。为了了解每次<code>git add</code>以及<code>git commit</code>之后发生了什么，需要认识以下三个object：</p>
+<h4 id="blob-object"><a href="#blob-object" class="headerlink" title="blob object"></a>blob object</h4><p>每个blob存储的都是Git仓库中文件的元信息，也就是文件的内容，每次执行<code>git add &lt;filename&gt;</code>后，<code>.git</code>中就会创建一个相对应的object来表示该文件，不过该文件的名字以及内容都是加密的。</p>
+<h4 id="tree-object"><a href="#tree-object" class="headerlink" title="tree object"></a>tree object</h4><p>一个tree可以理解为一个对文件的组织树，tree保存了与其相关联的一个或者多个文件名信息，并从文件名出发指向文件对应的blob，可以将不同文件很好地组织起来，tree也是每个<code>commit</code>能够有效组织管理文件的关键。</p>
+<h4 id="commit-object"><a href="#commit-object" class="headerlink" title="commit object"></a>commit object</h4><p>从字面意义上讲，commit其实就是保存了每次<code>commit</code>的信息，包括这个<code>commit</code>的<code>commit</code>时间、该<code>commit</code>所对应时间点时Git仓库中的文件信息等。每次进行<code>git commit</code>之后，就会创建这个object并指向一个tree。</p>
+<h3 id="从git-add到git-commit"><a href="#从git-add到git-commit" class="headerlink" title="从git add到git commit"></a>从git add到git commit</h3><p>这两个指令的使用分别对应Git工作流程的三个区，一个简单的示例图如下：</p>
+<p><img src="/images/gitdiff-to-internal/gitadd-to-gitcommit.png" alt=""></p>
+<blockquote>
+<p>图片来源：<a href="https://medium.com/@lucasmaurer/git-gud-the-working-tree-staging-area-and-local-repo-a1f0f4822018" target="_blank" rel="noopener">Git Gud: The Working Tree, Staging Area, and Local Repo</a></p>
+</blockquote>
+<p>其中三个不同颜色的方块代表不同的区，下面以一个简单例子来展示上述三个阶段与对应的Git仓库更改情况、以及两个指令在阶段转换中发生的作用：</p>
+<a id="more"></a>
+<ul>
+<li><p>在包含<code>.git</code>的目录中中工作的时候，比如说，创建了一个<code>README.md</code>文件，此时该<code>README.md</code>就处于<strong>工作区（working directory）</strong></p>
+</li>
+<li><p>执行：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git add README.md</span><br></pre></td></tr></table></figure>
+
+<p>指令之后，会将你刚刚在项目中创建的或者是更改的文件在<code>.git</code>仓库中创建一个对应的<code>blob object</code>，这个<code>blob</code>就是该文件的内容，标志着该文件从<strong>working directory</strong>进入<strong>staging area</strong>，是将文件进一步提交到Git仓库中的<strong>等待阶段</strong></p>
+</li>
+<li><p>执行：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git commit -m "initial commit"</span><br></pre></td></tr></table></figure>
+
+<p>之后，<code>.git</code>仓库会自动生成一个<code>commit object</code>、以及一个<code>tree object</code>，表明此时该文件已经正式提交到仓库中了，也就是从<strong>staging area</strong>进入了<strong>repository</strong>中，此时在<code>.git</code>残酷中，三个不同的object的指向关系如下：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">commit <span class="comment"># 记录本次commit</span></span><br><span class="line">  ⬇</span><br><span class="line"> tree  <span class="comment"># 管理本次commit的文件信息</span></span><br><span class="line">  ⬇</span><br><span class="line"> blob  <span class="comment"># 文件内容</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>如果我们此时添加一个新的文件，比如说是我们的<code>main.c</code>源文件，执行<code>git add</code>以及<code>git commit</code>指令之后，我们的仓库里objects关系长这样：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">commit → commit# 依次为第一、二个commit</span><br><span class="line">  ⬇        ⬇</span><br><span class="line"> tree  ⬅ tree# 每个commit拥有自己的组织结构</span><br><span class="line">  ⬇        ⬇</span><br><span class="line">  ⬇       tree# 增加了新的文件，创建对应的树节点</span><br><span class="line">  ⬇        ⬇</span><br><span class="line"> blob     blob# 依次为两个元文件README.md和main.c</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>从上图可以看出，每次提交新文件时，并不会重新克隆之前的文件状态，而是通过<code>tree</code>这个结构来指示文件的组织方式，那么这时候假如我们更改了文件<code>README.md</code>并重新<code>git add &amp; git commit</code>之后呢？根据树结构的特征，我们此时应该为新的<code>README.me</code>创建一个新的<code>tree object</code>以及利用指针关系指向之前<code>main.c</code>的源文件，如下：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">commit → commit →→→→→→ commit</span><br><span class="line">  ⬇        ⬇             ⬇</span><br><span class="line"> tree  ⬅ tree  ↙⬅⬅⬅tree</span><br><span class="line">  ⬇        ⬇	⬇        ⬇</span><br><span class="line">  ⬇       tree⬅↙      blob</span><br><span class="line">  ⬇        ⬇</span><br><span class="line"> blob     blob</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>可以明显地看到，第三次提交仓库之后，Git又为新版本的<code>README.md</code>创建了新的<code>blob object</code>。正式这样的指针树类型的组织方式，使我们能够方便的得到每次<code>commit</code>后的仓库文件组织结构。</p>
+</li>
+</ul>
+<h3 id="git-diff指令的两种格式"><a href="#git-diff指令的两种格式" class="headerlink" title="git diff指令的两种格式"></a>git diff指令的两种格式</h3><p>理解了Git仓库的内部运行机制，我们回到开头的疑问：</p>
+<p><img src="/images/gitdiff-to-internal/git-diff-commit.png" alt=""></p>
+<p>我在代码中调用了<code>git diff &lt;commit-object&gt;</code>来进行相邻阶段代码的比较，查阅文档，该指令功能是<strong>当前commit之前的stage area与上一次commit的文件差异</strong>，在课程项目中，当短时间内向Git仓库提交多次时，程序会等待所有<code>git add .</code>过程完成后，再依次进行<code>git commit</code>，所以在这里，其实我比较的是<strong>staging area中已有的内容与上一次commit的比较</strong>，所以产生了短时间内有大量更改的错觉，其实是因为<strong>staging area中积攒了大量待提交更改</strong>导致的，当我将指令改为</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git diff &lt;commit-object-1&gt; &lt;commit-object-2&gt;</span><br></pre></td></tr></table></figure>
+
+<p>后，根据Git文档，这时真正比较的是两个不同commit的差异，我也得到了我想要的结果：<br><img src="/images/gitdiff-to-internal/git-diff-commit-r.png" alt=""></p>
+<h3 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h3><p>[1]. <a href="https://git-scm.com/book/en/v2/Git-Internals-Git-Objects" target="_blank" rel="noopener">Git - Git Objects Documentation</a></p>
+<p>[2]. <a href="https://git-scm.com/docs/git-diff" target="_blank" rel="noopener">Git - git-diff Documentation</a></p>
+<p>[3]. <a href="https://www.youtube.com/watch?v=P6jD966jzlk" target="_blank" rel="noopener">Git Internals - How Git Works - Fear Not The SHA! - YouTube</a></p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>晗桐
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="https://blog.hantong.me/gitdiff-to-internal/" title="从git diff指令奇异结果到Git内部原理">https://blog.hantong.me/gitdiff-to-internal/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/zh-CN" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/git/" rel="tag"># git</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/why-abandon-popular-wireless-cellphone/" rel="prev" title="为什么我放弃使用爆款的无线耳机">
+      <i class="fa fa-chevron-left"></i> 为什么我放弃使用爆款的无线耳机
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/home-finally-online/" rel="next" title="我家终于又通网了">
+      我家终于又通网了 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#问题引入"><span class="nav-number">1.</span> <span class="nav-text">问题引入</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#commit频率过高？"><span class="nav-number">2.</span> <span class="nav-text">commit频率过高？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Git中的objects"><span class="nav-number">3.</span> <span class="nav-text">Git中的objects</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#blob-object"><span class="nav-number">3.1.</span> <span class="nav-text">blob object</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#tree-object"><span class="nav-number">3.2.</span> <span class="nav-text">tree object</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#commit-object"><span class="nav-number">3.3.</span> <span class="nav-text">commit object</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#从git-add到git-commit"><span class="nav-number">4.</span> <span class="nav-text">从git add到git commit</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#git-diff指令的两种格式"><span class="nav-number">5.</span> <span class="nav-text">git diff指令的两种格式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#参考资料"><span class="nav-number">6.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="晗桐"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">晗桐</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">31</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">15</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/llht" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;llht" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:hantongliu@outlook.com" title="E-Mail → mailto:hantongliu@outlook.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/zh-CN" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      快速访问
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="/booklist" title="&#x2F;booklist">书单</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="/footprint-map" title="&#x2F;footprint-map">足迹</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">晗桐</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-area-chart"></i>
+    </span>
+    <span title="站点总字数">105k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">1:35</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.1.1
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el: '#valine-comments',
+      verify: false,
+      notify: true,
+      appId: 'jvA4ciAnRp02XTuSobk8znDa-gzGzoHsz',
+      appKey: 'NOK2Kbeecc2vA8L6VHwNmWEO',
+      placeholder: "欢迎交流~",
+      avatar: 'mm',
+      meta: guest,
+      pageSize: '10' || 10,
+      visitor: false,
+      lang: 'zh-cn' || 'zh-cn',
+      path: location.pathname,
+      recordIP: false,
+      serverURLs: ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

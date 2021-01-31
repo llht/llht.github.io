@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="zh-CN,en,default">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.1.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/hantong.me-H.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/hantong.me-H.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/hantong.me-H.png">
+  <link rel="mask-icon" href="/images/hantong.me-H.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('https://blog.hantong.me').hostname,
+    root: '/',
+    scheme: 'Mist',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"hide","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"搜索","hits_empty":"没有找到相关搜索结果 ${query}","hits_stats":"找到约${hits}条结果（用时${time}ms）"}
+    },
+    localsearch: {"enable":false,"trigger":"manual","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="本文灵感来源于Youtube视频：WSL Terminal colors, tabs &amp; styling">
+<meta property="og:type" content="article">
+<meta property="og:title" content="美化Windows终端及WSL-Shell">
+<meta property="og:url" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;beautiful-terminal&#x2F;index.html">
+<meta property="og:site_name" content="晗桐的个人博客">
+<meta property="og:description" content="本文灵感来源于Youtube视频：WSL Terminal colors, tabs &amp; styling">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;images&#x2F;beautifulterminal&#x2F;demo.gif">
+<meta property="og:image" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;images&#x2F;beautifulterminal&#x2F;first.png">
+<meta property="og:image" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;images&#x2F;beautifulterminal&#x2F;second.png">
+<meta property="og:image" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;images&#x2F;beautifulterminal&#x2F;afterRoboto.png">
+<meta property="og:image" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;images&#x2F;beautifulterminal&#x2F;aftercolor.png">
+<meta property="og:image" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;images&#x2F;beautifulterminal&#x2F;dircolor.png">
+<meta property="og:image" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;images&#x2F;beautifulterminal&#x2F;bashprompt.png">
+<meta property="og:image" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;images&#x2F;beautifulterminal&#x2F;vim.png">
+<meta property="article:published_time" content="2019-06-30T15:02:58.000Z">
+<meta property="article:modified_time" content="2020-09-03T12:36:53.545Z">
+<meta property="article:author" content="晗桐">
+<meta property="article:tag" content="Linux">
+<meta property="article:tag" content="Windows Subsystem for Linux">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;images&#x2F;beautifulterminal&#x2F;demo.gif">
+
+<link rel="canonical" href="https://blog.hantong.me/beautiful-terminal/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>美化Windows终端及WSL-Shell | 晗桐的个人博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">晗桐的个人博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">个人网站 | 思想驻留地</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>时间线</a>
+
+  </li>
+        <li class="menu-item menu-item-messagepad">
+
+    <a href="/messagepad/" rel="section"><i class="fa fa-fw fa-comment"></i>留言板</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://blog.hantong.me/beautiful-terminal/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="晗桐">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="晗桐的个人博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          美化Windows终端及WSL-Shell
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-06-30 23:02:58" itemprop="dateCreated datePublished" datetime="2019-06-30T23:02:58+08:00">2019-06-30</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-09-03 20:36:53" itemprop="dateModified" datetime="2020-09-03T20:36:53+08:00">2020-09-03</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index">
+                    <span itemprop="name">技术</span>
+                  </a>
+                </span>
+            </span>
+
+          
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="fa fa-comment-o"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/beautiful-terminal/#comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/beautiful-terminal/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-file-word-o"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>3k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-clock-o"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>3 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <blockquote>
+<p> 本文灵感来源于Youtube视频：<a href="https://www.youtube.com/watch?v=kY4Ns260i2k&t=4s" target="_blank" rel="noopener">WSL Terminal colors, tabs &amp; styling</a></p>
+</blockquote>
+<a id="more"></a>
+<h3 id="效果展示"><a href="#效果展示" class="headerlink" title="效果展示"></a>效果展示</h3><p><img src="/images/beautifulterminal/demo.gif" alt=""></p>
+<p>上图即为我配置调整后的Windows Shell，相信很多人都被Windows默认命令行工具奇丑的界面所折服，每次使用WSL登录使用服务器的时候我都要吐槽一遍字体以及界面颜色，虽然<a href="https://github.com/microsoft/terminal" target="_blank" rel="noopener">Windows Terminal</a>已经开源并可以自行部署了，但是无奈于复杂的部署过程，我最终还是选择安装现成的第三方工具来解决问题，昨天在刷Youtube的时候偶然刷到一位博主的视频，结合该视频（链接在文章最顶部）以及我的一些自行探索，最终实现了开头所示的终端效果，整理了一下整个部署配置过程，希望可以帮到和我一样被丑陋的界面所折服的盆友们。</p>
+<blockquote>
+<p>以下流程为完整实现demo的过程，可以利用流程所提供的方法自行修改以满足个人界面要求</p>
+</blockquote>
+<h3 id="安装Hyper"><a href="#安装Hyper" class="headerlink" title="安装Hyper"></a>安装Hyper</h3><p>Hyper是一个基于Web技术的第三方终端应用（摘自<a href="https://github.com/zeit/hyper" target="_blank" rel="noopener">Github源码仓库</a>），通过该应用可以访问Bash、Shell、Powershell、WSL等Windows命令行工具，且可以通过自行配置实现不同的Windows终端访问。</p>
+<ul>
+<li><p>官网下载并安装Hyper</p>
+<p>直接进入<a href="https://hyper.is/" target="_blank" rel="noopener">Hyper.is</a>官网点击<code>Download Hyper for Windows</code>下载<code>exe</code>安装文件，点击安装后即会出现默认Hyper命令行工具</p>
+</li>
+</ul>
+<blockquote>
+<p>首次打开Hyper你的界面应该会长这样</p>
+<p><img src="/images/beautifulterminal/first.png" alt=""></p>
+</blockquote>
+<ul>
+<li><p>配置Hyper默认打开程序</p>
+<p>安装Hyper后可以自定义默认打开程序，我们主要的目的是运行<code>bash</code>以及<code>WSL(Windows Subsystem for Linux)</code>，点击左上角的<code>三条横线</code>，在弹出的方框中点击<code>Edit</code>→<code>Preferences</code>即可打开Hyper配置文件，下拉，找到以下内容</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">// the shell to run when spawning a new session (i.e. /usr/<span class="built_in">local</span>/bin/fish)</span><br><span class="line">// <span class="keyword">if</span> left empty, your system<span class="string">'s login shell will be used by default</span></span><br><span class="line"><span class="string">//</span></span><br><span class="line"><span class="string">// Windows</span></span><br><span class="line"><span class="string">// - Make sure to use a full path if the binary name doesn'</span>t work</span><br><span class="line">// - Remove `--login` <span class="keyword">in</span> shellArgs</span><br><span class="line">//</span><br><span class="line">// Bash on Windows</span><br><span class="line">// - Example: `C:\\Windows\\System32\\bash.exe`</span><br><span class="line">//</span><br><span class="line">// PowerShell on Windows</span><br><span class="line">// - Example: `C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`</span><br></pre></td></tr></table></figure>
+
+<p>这里显示了如何修改默认打开Hyper后运行的shell程序，另起一行，添加以下语句即可，千万不要忘了后面的逗号：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">shell: <span class="string">'C:\\Windows\\System32\\bash.exe'</span>,</span><br></pre></td></tr></table></figure>
+
+<p>重新打开Hyper，即可启动<code>bash</code>，使用<code>cd ~</code>命令，即可进入<code>WSL</code></p>
+</li>
+</ul>
+<blockquote>
+<p>此时再次打开即可进入默认bash</p>
+<p><img src="/images/beautifulterminal/second.png" alt=""></p>
+</blockquote>
+<h3 id="安装Roboto-Mono字体"><a href="#安装Roboto-Mono字体" class="headerlink" title="安装Roboto Mono字体"></a>安装Roboto Mono字体</h3><p>默认的字体可能不是那么优秀，我们安装一个新字体：Roboto Mono</p>
+<ul>
+<li><p>下载Roboto Mono</p>
+<p>打开网站：<a href="https://fonts.google.com/?query=roboto" target="_blank" rel="noopener">https://fonts.google.com/?query=roboto</a>，点击<code>Roboto Mono</code>项的右上角加号添加到下载列表，双击右下角方框的黑色部分，即可打开下载配置，再点击<code>CUSTOMIZE</code>，选择<code>light 300</code>、<code>regular 400</code>、<code>medium 500</code>、<code>bold 700</code>四个选项后点击右下角下载即可</p>
+</li>
+<li><p>安装Roboto Mono</p>
+<p>解压下载的文件(这里最好新建一个文件夹如<code>Roboto</code>后再解压入文件夹)并全部选中，鼠标右键→安装，即可将字体安装入系统中</p>
+</li>
+<li><p>将字体应用于Hyper</p>
+<p>进入刚才的Hyper配置文件，找到<code>fontsize</code>和<code>fontFamily</code>两个选项并修改如下：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">// default font size <span class="keyword">in</span> pixels <span class="keyword">for</span> all tabs</span><br><span class="line">fontSize: 15,</span><br><span class="line"></span><br><span class="line">// font family with optional fallbacks</span><br><span class="line">fontFamily: <span class="string">'Roboto Mono, "DejaVu Sans Mono", Consolas, "Lucida Console", monospace'</span>,</span><br></pre></td></tr></table></figure>
+
+<p>在这一步调整了<code>fontSize</code>以适应正常使用，当然你可以自行调整以适应你的屏幕分辨率，在<code>fontFamily</code>选项中删掉第一个字体改为<code>Roboto Mono</code>即可</p>
+</li>
+</ul>
+<blockquote>
+<p>添加字体并更改大小后，Hyper显示如下</p>
+<p><img src="/images/beautifulterminal/afterRoboto.png" alt=""></p>
+</blockquote>
+<h3 id="配置文件字体等显示颜色"><a href="#配置文件字体等显示颜色" class="headerlink" title="配置文件字体等显示颜色"></a>配置文件字体等显示颜色</h3><p> 你可以选择默认的Hyper显示颜色，也可以按照以下方式修改为demo中的显示颜色</p>
+<ul>
+<li><p>修改背景以及边界颜色</p>
+<p>打开Hyper配置文件并将<code>backgroudColor</code>以及<code>borderColor</code>修改如下，其中<code>borderColor</code>用于修改打开不同窗口后的分界颜色，使用<code>ctrl+shift+t</code>即可开启一个新窗口</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">backgroundColor: <span class="string">'#2e3440'</span>,</span><br><span class="line">borderColor: <span class="string">'#4c566a'</span>,</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<blockquote>
+<p>修改界面颜色后</p>
+<p><img src="/images/beautifulterminal/aftercolor.png" alt=""></p>
+</blockquote>
+<ul>
+<li><p>配置nord-dircolors颜色主题</p>
+<p><code>nord-dircolors</code>是一款艺术化的、北极偏蓝的干净优雅的文件颜色主题（摘自<a href="https://github.com/arcticicestudio/nord-dircolors" target="_blank" rel="noopener">Github-nord-dircolors</a>）</p>
+<blockquote>
+<p> 此步骤推荐使用<code>nano</code>编辑器而非<code>vim</code>，因为<code>vim</code>可能在粘贴时出错</p>
+</blockquote>
+<p>直接进入<a href="https://github.com/arcticicestudio/nord-dircolors/blob/develop/src/dir_colors" target="_blank" rel="noopener">nord-dircolors/src/dir_colors</a>并复制该文件全部内容</p>
+<p>在<code>~</code>目录下新建<code>.dircolors</code>文件，并粘贴好刚复制的内容保存</p>
+</li>
+<li><p>应用nord-dircolors颜色主题</p>
+<p>打开<code>.bashrc</code>文件，并在最后一行加入以下语句</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">eval</span> <span class="string">"<span class="variable">$(dircolors ~/.dircolors)</span>"</span></span><br></pre></td></tr></table></figure>
+
+<p>即可在每次打开Hyper后应用该颜色主题</p>
+</li>
+</ul>
+<blockquote>
+<p>应用后界面如下</p>
+<p><img src="/images/beautifulterminal/dircolor.png" alt=""></p>
+</blockquote>
+<h3 id="配置Bash-Prompt"><a href="#配置Bash-Prompt" class="headerlink" title="配置Bash-Prompt"></a>配置Bash-Prompt</h3><p>何为Bash-Prompt？进入bash后，每次输入命令前的一行字就是bash prompt，在我的ubuntu虚拟机里看起来是这样的：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">lht@lht-virtual-machine:~$</span><br></pre></td></tr></table></figure>
+
+<p>同样可以自行定义该语句的格式，为了最大程度的简洁有用，在<code>.bashrc</code>文件最后一行添加：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">export PS1="[\T] \u@wsl: \w\n$ "</span><br></pre></td></tr></table></figure>
+
+<p>其中<code>\T</code>表示时间，<code>\u</code>表示用户名，<code>\w</code>表示文件目录，<code>\n</code>为换行，配置好后，我的bash prompt显示如下</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[09:34:38] lht@wsl: ~</span><br><span class="line"><span class="meta">$</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>配置好后的界面</p>
+<p><img src="/images/beautifulterminal/bashprompt.png" alt=""></p>
+</blockquote>
+<h3 id="配置Vim颜色主题"><a href="#配置Vim颜色主题" class="headerlink" title="配置Vim颜色主题"></a>配置Vim颜色主题</h3><p>默认的Vim颜色主题十分辣眼睛，注释显示为深蓝色，我推荐采用desert主题，在<code>~</code>目录下，进入<code>.vimrc</code>文件（如果没有的话新建即可），添加：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">:color desert</span><br></pre></td></tr></table></figure>
+
+<p>即可，再次打开vim就没有辣眼睛的颜色啦！</p>
+<blockquote>
+<p>更改主题后vim颜色见图</p>
+<p><img src="/images/beautifulterminal/vim.png" alt=""></p>
+</blockquote>
+<h3 id="总结及外部链接"><a href="#总结及外部链接" class="headerlink" title="总结及外部链接"></a>总结及外部链接</h3><p>配置完成的shell是不是显得高冷和整洁了许多呢，以上内容仅仅是shell外观配置的冰山一角，如果想要配置个性化的主题颜色等，以下链接内容可供参考</p>
+<ul>
+<li>Hyper官方网站：<a href="https://hyper.is/" target="_blank" rel="noopener">hyper.is</a></li>
+<li>Google字体网站：<a href="https://fonts.google.com/" target="_blank" rel="noopener">fonts.google.com</a></li>
+<li>Arctic Ice Studio（艺术冰工作室）：<a href="https://github.com/arcticicestudio" target="_blank" rel="noopener">github.com/arcticicestudio</a></li>
+<li>vim官方网站：<a href="https://www.vim.org/" target="_blank" rel="noopener">vim.org</a></li>
+</ul>
+<h3 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h3><ol>
+<li><a href="https://www.youtube.com/watch?v=kY4Ns260i2k&t=123s" target="_blank" rel="noopener">Youtube-WSL Terminal colors, tabs &amp; styling</a></li>
+<li><a href="https://stackoverflow.com/questions/2975994/how-to-set-default-vim-colorscheme" target="_blank" rel="noopener">How to set default vim colorscheme - Stack Overflow</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>晗桐
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="https://blog.hantong.me/beautiful-terminal/" title="美化Windows终端及WSL-Shell">https://blog.hantong.me/beautiful-terminal/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/zh-CN" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Linux/" rel="tag"># Linux</a>
+              <a href="/tags/Windows-Subsystem-for-Linux/" rel="tag"># Windows Subsystem for Linux</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/license/" rel="prev" title="博客声明">
+      <i class="fa fa-chevron-left"></i> 博客声明
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/trashtrip/" rel="next" title="去美帝真难">
+      去美帝真难 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#效果展示"><span class="nav-number">1.</span> <span class="nav-text">效果展示</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#安装Hyper"><span class="nav-number">2.</span> <span class="nav-text">安装Hyper</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#安装Roboto-Mono字体"><span class="nav-number">3.</span> <span class="nav-text">安装Roboto Mono字体</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#配置文件字体等显示颜色"><span class="nav-number">4.</span> <span class="nav-text">配置文件字体等显示颜色</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#配置Bash-Prompt"><span class="nav-number">5.</span> <span class="nav-text">配置Bash-Prompt</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#配置Vim颜色主题"><span class="nav-number">6.</span> <span class="nav-text">配置Vim颜色主题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#总结及外部链接"><span class="nav-number">7.</span> <span class="nav-text">总结及外部链接</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#参考资料"><span class="nav-number">8.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="晗桐"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">晗桐</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">31</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">15</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/llht" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;llht" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:hantongliu@outlook.com" title="E-Mail → mailto:hantongliu@outlook.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/zh-CN" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      快速访问
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="/booklist" title="&#x2F;booklist">书单</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="/footprint-map" title="&#x2F;footprint-map">足迹</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">晗桐</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-area-chart"></i>
+    </span>
+    <span title="站点总字数">105k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">1:35</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.1.1
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el: '#valine-comments',
+      verify: false,
+      notify: true,
+      appId: 'jvA4ciAnRp02XTuSobk8znDa-gzGzoHsz',
+      appKey: 'NOK2Kbeecc2vA8L6VHwNmWEO',
+      placeholder: "欢迎交流~",
+      avatar: 'mm',
+      meta: guest,
+      pageSize: '10' || 10,
+      visitor: false,
+      lang: 'zh-cn' || 'zh-cn',
+      path: location.pathname,
+      recordIP: false,
+      serverURLs: ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

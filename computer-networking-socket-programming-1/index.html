@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh-CN,en,default">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.1.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/hantong.me-H.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/hantong.me-H.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/hantong.me-H.png">
+  <link rel="mask-icon" href="/images/hantong.me-H.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('https://blog.hantong.me').hostname,
+    root: '/',
+    scheme: 'Mist',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"hide","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"搜索","hits_empty":"没有找到相关搜索结果 ${query}","hits_stats":"找到约${hits}条结果（用时${time}ms）"}
+    },
+    localsearch: {"enable":false,"trigger":"manual","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="《计算机网络：自顶向下方法》中的前三个套接字（Socket）编程作业，分别是 Web服务器、UDP ping 程序以及邮件客户，分别从计算机网络应用层的三个协议：HTTP、类ICMP以及SMTP角度展示了套接字编程的方法以及简单的协议运用。  原框架代码：Student Resources - Python 3 Socket Programming Assignments  Web 服务器（Web">
+<meta property="og:type" content="article">
+<meta property="og:title" content="计算机网络: 套接字编程其一">
+<meta property="og:url" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;computer-networking-socket-programming-1&#x2F;index.html">
+<meta property="og:site_name" content="晗桐的个人博客">
+<meta property="og:description" content="《计算机网络：自顶向下方法》中的前三个套接字（Socket）编程作业，分别是 Web服务器、UDP ping 程序以及邮件客户，分别从计算机网络应用层的三个协议：HTTP、类ICMP以及SMTP角度展示了套接字编程的方法以及简单的协议运用。  原框架代码：Student Resources - Python 3 Socket Programming Assignments  Web 服务器（Web">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-07-14T02:06:43.000Z">
+<meta property="article:modified_time" content="2020-09-03T12:36:53.596Z">
+<meta property="article:author" content="晗桐">
+<meta property="article:tag" content="计算机网络">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://blog.hantong.me/computer-networking-socket-programming-1/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>计算机网络: 套接字编程其一 | 晗桐的个人博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">晗桐的个人博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">个人网站 | 思想驻留地</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>时间线</a>
+
+  </li>
+        <li class="menu-item menu-item-messagepad">
+
+    <a href="/messagepad/" rel="section"><i class="fa fa-fw fa-comment"></i>留言板</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://blog.hantong.me/computer-networking-socket-programming-1/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="晗桐">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="晗桐的个人博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          计算机网络: 套接字编程其一
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-07-14 10:06:43" itemprop="dateCreated datePublished" datetime="2020-07-14T10:06:43+08:00">2020-07-14</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-09-03 20:36:53" itemprop="dateModified" datetime="2020-09-03T20:36:53+08:00">2020-09-03</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index">
+                    <span itemprop="name">技术</span>
+                  </a>
+                </span>
+            </span>
+
+          
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="fa fa-comment-o"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/computer-networking-socket-programming-1/#comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/computer-networking-socket-programming-1/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-file-word-o"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>5.6k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-clock-o"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>5 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>《计算机网络：自顶向下方法》中的前三个套接字（Socket）编程作业，分别是 Web服务器、UDP ping 程序以及邮件客户，分别从计算机网络应用层的三个协议：HTTP、类ICMP以及SMTP角度展示了套接字编程的方法以及简单的协议运用。</p>
+<blockquote>
+<p>原框架代码：<a href="https://media.pearsoncmg.com/ph/esm/ecs_kurose_compnetwork_8/cw/" target="_blank" rel="noopener">Student Resources - Python 3 Socket Programming Assignments</a></p>
+</blockquote>
+<h3 id="Web-服务器（Web-Server）"><a href="#Web-服务器（Web-Server）" class="headerlink" title="Web 服务器（Web Server）"></a>Web 服务器（Web Server）</h3><p>该程序是一个简洁的Web服务器，运行该服务器后，可以使用任意浏览器发送HTTP请求（其中的 198.168.0.1 需要替换成运行该服务器的主机IP地址）：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http:&#x2F;&#x2F;198.168.0.1:12000&#x2F;hello-world.html</span><br></pre></td></tr></table></figure>
+<p>该服务器将会处理该请求并寻找相应网页文件（需要将网页文件与该服务器文件置于同一路径下），找不到则返回 404 错误码。<br>程序如下：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> socket <span class="keyword">import</span> *</span><br><span class="line"><span class="keyword">import</span> sys</span><br><span class="line"><span class="comment"># prepare the server socket</span></span><br><span class="line">serverPort = <span class="number">12000</span></span><br><span class="line">serverSocket = socket(AF_INET, SOCK_STREAM)</span><br><span class="line">serverSocket.bind((<span class="string">''</span>, serverPort))</span><br><span class="line">serverSocket.listen(<span class="number">1</span>)</span><br><span class="line"><span class="comment"># main loop for accepting requests</span></span><br><span class="line"><span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">    print(<span class="string">'Web server ready'</span>)</span><br><span class="line">    connectionSocket, addr = serverSocket.accept()</span><br><span class="line">    print(<span class="string">'Connection from '</span> + str(addr[<span class="number">0</span>]) + <span class="string">":"</span> + str(addr[<span class="number">1</span>]))</span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        message = connectionSocket.recv(<span class="number">1024</span>).decode()</span><br><span class="line">        filename = message.split()[<span class="number">1</span>]</span><br><span class="line">        f = open(filename[<span class="number">1</span>:])</span><br><span class="line">        outputdata = f.readlines()</span><br><span class="line">        <span class="comment"># send HTTP header line:</span></span><br><span class="line">        connectionSocket.send(<span class="string">"HTTP/1.1 200 OK\r\n\r\n"</span>.encode())</span><br><span class="line">        <span class="comment"># send content of the HTML file</span></span><br><span class="line">        <span class="keyword">for</span> i <span class="keyword">in</span> range(<span class="number">0</span>, len(outputdata)):</span><br><span class="line">            connectionSocket.send(outputdata[i].encode())</span><br><span class="line">        connectionSocket.send(<span class="string">"\r\n"</span>.encode());</span><br><span class="line">        connectionSocket.close()</span><br><span class="line">    <span class="keyword">except</span>:</span><br><span class="line">        <span class="comment"># can't find the specified server file</span></span><br><span class="line">        connectionSocket.send(<span class="string">"HTTP/1.1 404 Not Found\r\n"</span>.encode())</span><br><span class="line">        connectionSocket.close()</span><br><span class="line">serverSocket.close()</span><br><span class="line">sys.exit()</span><br></pre></td></tr></table></figure>
+<h3 id="UDP-ping-程序-（UDP-Pinger）"><a href="#UDP-ping-程序-（UDP-Pinger）" class="headerlink" title="UDP ping 程序 （UDP Pinger）"></a>UDP ping 程序 （UDP Pinger）</h3><a id="more"></a>
+
+<p>客户端程序向服务器端程序发送多个简单的 ping 请求，服务器端随机产生回应，以模仿 ping 程序的丢包检测。服务器端和客户端程序分别如下：</p>
+<h4 id="Server-py"><a href="#Server-py" class="headerlink" title="Server.py"></a>Server.py</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> random</span><br><span class="line"><span class="keyword">from</span> socket <span class="keyword">import</span> *</span><br><span class="line">serverSocket = socket(AF_INET, SOCK_DGRAM)</span><br><span class="line">serverSocket.bind((<span class="string">''</span>, <span class="number">12000</span>))</span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">    rand = random.randint(<span class="number">0</span>, <span class="number">10</span>)</span><br><span class="line">    message, address = serverSocket.recvfrom(<span class="number">1024</span>)</span><br><span class="line">    message = message.upper()</span><br><span class="line">    <span class="keyword">if</span> rand &lt; <span class="number">4</span>:</span><br><span class="line">        <span class="keyword">continue</span></span><br><span class="line">    serverSocket.sendto(message, address)</span><br></pre></td></tr></table></figure>
+
+<h4 id="Client-py"><a href="#Client-py" class="headerlink" title="Client.py"></a>Client.py</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> socket <span class="keyword">import</span> *</span><br><span class="line"><span class="keyword">from</span> time <span class="keyword">import</span> sleep</span><br><span class="line"><span class="keyword">from</span> time <span class="keyword">import</span> time</span><br><span class="line"><span class="keyword">from</span> datetime <span class="keyword">import</span> datetime</span><br><span class="line">serverName = <span class="string">'192.168.110.61'</span></span><br><span class="line">serverPort = <span class="number">12000</span></span><br><span class="line">clientSocket = socket(AF_INET, SOCK_DGRAM)</span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> range(<span class="number">0</span>, <span class="number">10</span>):</span><br><span class="line">    message = <span class="string">"Ping "</span> + str(i) + <span class="string">" "</span> +  str(datetime.now())</span><br><span class="line">    millis = time() * <span class="number">1000</span></span><br><span class="line">    clientSocket.sendto(message.encode(), (serverName, serverPort))</span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        clientSocket.settimeout(<span class="number">1</span>)</span><br><span class="line">        modifiedMessage, serverAddress = clientSocket.recvfrom(<span class="number">1024</span>)</span><br><span class="line">        RTT = time() * <span class="number">1000</span> - millis</span><br><span class="line">        print(<span class="string">"receive "</span> + str(len(modifiedMessage)) + <span class="string">" bytes from "</span> + serverName + <span class="string">" RTT: "</span> + str(round(RTT, <span class="number">2</span>)) + <span class="string">" ms"</span>)</span><br><span class="line">    <span class="keyword">except</span>:</span><br><span class="line">        <span class="comment"># time out</span></span><br><span class="line">        print(<span class="string">'Request timed out'</span>)</span><br><span class="line">clientSocket.close()</span><br></pre></td></tr></table></figure>
+
+<h3 id="邮件客户-（SMTP）"><a href="#邮件客户-（SMTP）" class="headerlink" title="邮件客户 （SMTP）"></a>邮件客户 （SMTP）</h3><p>通过TCP协议向QQ邮箱的 SMTP 服务器建立连接，并发送一系列 SMTP 协议命令，以发送邮件到制定的邮件地址。</p>
+<blockquote>
+<p>需要注意的是，本程序使用QQ邮箱的 SMTP 服务器：smtp.qq.com，并通过 AUTH LOGIN 方法进行身份验证，所以在使用时需要首先在QQ邮箱设置中获得 SMTP 授权，才可以正常收发邮件</p>
+</blockquote>
+<p>代码如下：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> socket <span class="keyword">import</span> *</span><br><span class="line"><span class="keyword">import</span> base64</span><br><span class="line"></span><br><span class="line"><span class="comment"># input nessasary information</span></span><br><span class="line">username = input(<span class="string">'Input SMTP AUTH username: '</span>)</span><br><span class="line">password = input(<span class="string">'Input SMTP AUTH password: '</span>)</span><br><span class="line">mailTo = input(<span class="string">'Input receiver email: '</span>)</span><br><span class="line">msg = input(<span class="string">'Input mail content: '</span>)</span><br><span class="line"></span><br><span class="line">msg =  <span class="string">"\r\n "</span> + msg</span><br><span class="line">endmsg = <span class="string">"\r\n.\r\n"</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># choose a mail server, I choose qq mail here</span></span><br><span class="line">mailserver = <span class="string">'smtp.qq.com'</span></span><br><span class="line">mailserverPort = <span class="number">587</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># create TCP socket and connect to the mail server</span></span><br><span class="line">clientSocket = socket(AF_INET, SOCK_STREAM)</span><br><span class="line">clientSocket.connect((mailserver, mailserverPort))</span><br><span class="line"></span><br><span class="line"><span class="comment"># check connection succeeds</span></span><br><span class="line">recv = clientSocket.recv(<span class="number">1024</span>).decode()</span><br><span class="line">print(recv)</span><br><span class="line"><span class="keyword">if</span> recv[:<span class="number">3</span>] != <span class="string">'220'</span>:</span><br><span class="line">    print(<span class="string">'220 reply not received from server.'</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># send EHLO command and print server response</span></span><br><span class="line">helloCommand = <span class="string">'EHLO Alice\r\n'</span></span><br><span class="line">clientSocket.send(helloCommand.encode())</span><br><span class="line">recv1 = clientSocket.recv(<span class="number">1024</span>).decode()</span><br><span class="line">print(recv1)</span><br><span class="line"><span class="keyword">if</span> recv1[:<span class="number">3</span>] != <span class="string">'250'</span>:</span><br><span class="line">    print(<span class="string">'250 reply not receiced from server'</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># authenticate AUTH LOGIN command and print server response</span></span><br><span class="line">clientSocket.send(<span class="string">"AUTH LOGIN\r\n"</span>.encode());</span><br><span class="line">print(clientSocket.recv(<span class="number">1024</span>).decode())</span><br><span class="line"><span class="comment"># send encoded username</span></span><br><span class="line">usernameStr = base64.b64encode(username.encode(<span class="string">'ascii'</span>))</span><br><span class="line">clientSocket.send(usernameStr + (<span class="string">"\r\n"</span>).encode());</span><br><span class="line">print(clientSocket.recv(<span class="number">1024</span>).decode())</span><br><span class="line"><span class="comment"># send encoded password</span></span><br><span class="line">passwordStr = base64.b64encode(password.encode(<span class="string">'ascii'</span>))</span><br><span class="line">clientSocket.send(passwordStr + (<span class="string">"\r\n"</span>).encode());</span><br><span class="line">print(clientSocket.recv(<span class="number">1024</span>).decode())</span><br><span class="line"></span><br><span class="line"><span class="comment"># send MAIL FROM command and print server response</span></span><br><span class="line">mailfromCommand = <span class="string">'MAIL FROM: &lt;'</span> + username + <span class="string">'&gt;\r\n'</span></span><br><span class="line">clientSocket.send(mailfromCommand.encode())</span><br><span class="line">recv2 = clientSocket.recv(<span class="number">1024</span>).decode()</span><br><span class="line">print(recv2)</span><br><span class="line"><span class="keyword">if</span> recv2[:<span class="number">3</span>] != <span class="string">'250'</span>:</span><br><span class="line">    print(<span class="string">'250 reply not receiced from server'</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># send RCPT TO command and print server response</span></span><br><span class="line">rcpttoCommand = <span class="string">'RCPT TO: &lt;'</span> + mailTo +  <span class="string">'&gt;\r\n'</span></span><br><span class="line">clientSocket.send(rcpttoCommand.encode())</span><br><span class="line">recv3 = clientSocket.recv(<span class="number">1024</span>).decode()</span><br><span class="line">print(recv3)</span><br><span class="line"><span class="keyword">if</span> recv3[:<span class="number">3</span>] != <span class="string">'250'</span>:</span><br><span class="line">    print(<span class="string">'250 reply not receiced from server'</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># send DATA command and print server response</span></span><br><span class="line">dataCommand = <span class="string">'DATA\r\n'</span></span><br><span class="line">clientSocket.send(dataCommand.encode())</span><br><span class="line">recv4 = clientSocket.recv(<span class="number">1024</span>).decode()</span><br><span class="line">print(recv4)</span><br><span class="line"><span class="keyword">if</span> recv4[:<span class="number">3</span>] != <span class="string">'354'</span>:</span><br><span class="line">    print(<span class="string">'354 reply not receiced from server'</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># send message and print server response</span></span><br><span class="line">clientSocket.send(msg.encode())</span><br><span class="line"><span class="comment"># send end . and ...</span></span><br><span class="line">clientSocket.send(endmsg.encode())</span><br><span class="line">recv5 = clientSocket.recv(<span class="number">1024</span>).decode()</span><br><span class="line">print(recv5)</span><br><span class="line"><span class="keyword">if</span> recv5[:<span class="number">3</span>] != <span class="string">'250'</span>:</span><br><span class="line">    print(<span class="string">'250 reply not receiced from server'</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># send QUIT command and ...</span></span><br><span class="line">quitCommand = <span class="string">'QUIT\r\n'</span></span><br><span class="line">clientSocket.send(quitCommand.encode())</span><br><span class="line">recv6 = clientSocket.recv(<span class="number">1024</span>).decode()</span><br><span class="line">print(recv6)</span><br><span class="line"><span class="keyword">if</span> recv6[:<span class="number">3</span>] != <span class="string">'221'</span>:</span><br><span class="line">    print(<span class="string">'221 reply not receiced from server'</span>)</span><br></pre></td></tr></table></figure>
+
+<p>一个简单的使用示例以及相应输出如下：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">➜  SMTP git:(master) ✗ python3 Client.py</span><br><span class="line">Input SMTP AUTH username: smtpautousername@qq.com <span class="comment"># 使用时替换为自己的QQ邮箱地址</span></span><br><span class="line">Input SMTP AUTH password: abcdefghijklmn <span class="comment"># 使用时替换为自己的授权码</span></span><br><span class="line">Input receiver email: receiver@email.com <span class="comment"># 使用时替换为收件人邮箱地址</span></span><br><span class="line">Input mail content: hello another mail! <span class="comment"># 使用时替换为自己想发送的内容</span></span><br><span class="line">220 newxmesmtplogicsvrszb5.qq.com XMail Esmtp QQ Mail Server.</span><br><span class="line"></span><br><span class="line">250-newxmesmtplogicsvrszb5.qq.com</span><br><span class="line">250-PIPELINING</span><br><span class="line">250-SIZE 73400320</span><br><span class="line">250-STARTTLS</span><br><span class="line">250-AUTH LOGIN PLAIN</span><br><span class="line">250-AUTH=LOGIN</span><br><span class="line">250-MAILCOMPRESS</span><br><span class="line">250 8BITMIME</span><br><span class="line"></span><br><span class="line">334 VXNlcm5hbWU6</span><br><span class="line"></span><br><span class="line">334 UGFzc3dvcmQ6</span><br><span class="line"></span><br><span class="line">235 Authentication successful</span><br><span class="line"></span><br><span class="line">250 OK.</span><br><span class="line"></span><br><span class="line">250 OK</span><br><span class="line"></span><br><span class="line">354 End data with &lt;CR&gt;&lt;LF&gt;.&lt;CR&gt;&lt;LF&gt;.</span><br><span class="line"></span><br><span class="line">250 OK: queued as.</span><br><span class="line"></span><br><span class="line">221 Bye.</span><br></pre></td></tr></table></figure>
+
+<h3 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h3><ul>
+<li><a href="https://gaia.cs.umass.edu/kurose_ross/instructor.htm" target="_blank" rel="noopener">Computer Networking:  a Top Down Approach</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>晗桐
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="https://blog.hantong.me/computer-networking-socket-programming-1/" title="计算机网络: 套接字编程其一">https://blog.hantong.me/computer-networking-socket-programming-1/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/zh-CN" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/" rel="tag"># 计算机网络</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/association-rule-mining/" rel="prev" title="数据挖掘：关联规则挖掘方法比较与分析">
+      <i class="fa fa-chevron-left"></i> 数据挖掘：关联规则挖掘方法比较与分析
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/traceroute/" rel="next" title="计算机网络：从老家发送一个数据包到美国，要经过怎样的路径？">
+      计算机网络：从老家发送一个数据包到美国，要经过怎样的路径？ <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#Web-服务器（Web-Server）"><span class="nav-number">1.</span> <span class="nav-text">Web 服务器（Web Server）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#UDP-ping-程序-（UDP-Pinger）"><span class="nav-number">2.</span> <span class="nav-text">UDP ping 程序 （UDP Pinger）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Server-py"><span class="nav-number">2.1.</span> <span class="nav-text">Server.py</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Client-py"><span class="nav-number">2.2.</span> <span class="nav-text">Client.py</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#邮件客户-（SMTP）"><span class="nav-number">3.</span> <span class="nav-text">邮件客户 （SMTP）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#参考资料"><span class="nav-number">4.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="晗桐"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">晗桐</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">31</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">15</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/llht" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;llht" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:hantongliu@outlook.com" title="E-Mail → mailto:hantongliu@outlook.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/zh-CN" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      快速访问
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="/booklist" title="&#x2F;booklist">书单</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="/footprint-map" title="&#x2F;footprint-map">足迹</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">晗桐</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-area-chart"></i>
+    </span>
+    <span title="站点总字数">105k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">1:35</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.1.1
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el: '#valine-comments',
+      verify: false,
+      notify: true,
+      appId: 'jvA4ciAnRp02XTuSobk8znDa-gzGzoHsz',
+      appKey: 'NOK2Kbeecc2vA8L6VHwNmWEO',
+      placeholder: "欢迎交流~",
+      avatar: 'mm',
+      meta: guest,
+      pageSize: '10' || 10,
+      visitor: false,
+      lang: 'zh-cn' || 'zh-cn',
+      path: location.pathname,
+      recordIP: false,
+      serverURLs: ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

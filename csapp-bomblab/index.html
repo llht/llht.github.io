@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="zh-CN,en,default">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.1.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/hantong.me-H.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/hantong.me-H.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/hantong.me-H.png">
+  <link rel="mask-icon" href="/images/hantong.me-H.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('https://blog.hantong.me').hostname,
+    root: '/',
+    scheme: 'Mist',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"hide","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"搜索","hits_empty":"没有找到相关搜索结果 ${query}","hits_stats":"找到约${hits}条结果（用时${time}ms）"}
+    },
+    localsearch: {"enable":false,"trigger":"manual","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="去年暑假汇编语言课程作业，二进制炸弹破解的过程可谓苦尽甘来 现在把自己写的解析报告放上来, 纯原创, 没有参考任何关于此炸弹的解析 可能会与你拿到的炸弹有所不同, 本文只提供思路 第一关 字符串比较 通过read_line从标准输入流输入测试字符串 例如:1234567 进入phase_1函数 进入strings_not_equal函数 进入第一个string_length函数 根据string_">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CS:APP 拆除二进制炸弹实验全解析">
+<meta property="og:url" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;csapp-bomblab&#x2F;index.html">
+<meta property="og:site_name" content="晗桐的个人博客">
+<meta property="og:description" content="去年暑假汇编语言课程作业，二进制炸弹破解的过程可谓苦尽甘来 现在把自己写的解析报告放上来, 纯原创, 没有参考任何关于此炸弹的解析 可能会与你拿到的炸弹有所不同, 本文只提供思路 第一关 字符串比较 通过read_line从标准输入流输入测试字符串 例如:1234567 进入phase_1函数 进入strings_not_equal函数 进入第一个string_length函数 根据string_">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;first0.jpg?token&#x3D;AITVCCHRM55MVFQ2EYLA6YS5AG43E">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;second0.jpg?token&#x3D;AITVCCFKRX432D5VZBAZLLC5AG5BS">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;second1.jpg?token&#x3D;AITVCCD37XGLMEHRDJPXZSC5AG5RA">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;third0.jpg?token&#x3D;AITVCCDKMWCDUWTHCBJG3NC5AG52Q">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;third1.jpg?token&#x3D;AITVCCAA3SGLW5QRCSRK4325AG54G">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;forth0.jpg?token&#x3D;AITVCCEHKIS26PNQFMW5RCC5AG6LW">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;forth1.jpg?token&#x3D;AITVCCBFI7NUKK2BZPGVZG25AG6L4">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;fifth0.jpg?token&#x3D;AITVCCBGZ4UPXYTEDY7OURS5AG7NU">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;fifth1.jpg?token&#x3D;AITVCCCSRY75VW4VBBYDIRS5AG7N4">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;fifth2.jpg?token&#x3D;AITVCCH4EEKKBLH2EJYATUS5AG7OE">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;sixth0.jpg?token&#x3D;AITVCCHMV2DVUKQLLAG3ND25AHBFY">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;sixth1.jpg?token&#x3D;AITVCCB6NVKTXSEBPNKXP2C5AHBGA">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;sixth2.jpg?token&#x3D;AITVCCHXSJJJRIUFGA6HI225AHBGI">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;sixth3.jpg?token&#x3D;AITVCCFFIKUT7V7TXEA5NGS5AHBGS">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;sixth4.jpg?token&#x3D;AITVCCCZNUITALZAR4PGE3C5AHBG2">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;hide0.jpg?token&#x3D;AITVCCHWWV2IEAEURCPE5SS5AHCIS">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;hide1.jpg?token&#x3D;AITVCCCIT7EOAYZUGR3AHXS5AHCKU">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;hide2.jpg?token&#x3D;AITVCCCXTQJYZBO7XLKU2525AHCM4">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;hide3.jpg?token&#x3D;AITVCCGEPJDSP7OQSPOHORC5AHCOU">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;hide4.jpg?token&#x3D;AITVCCBVGYHG2PTDVSETOX25AHCPY">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;hide5.jpg?token&#x3D;AITVCCEWXRBQ57GUWV44IJC5AHCQ6">
+<meta property="og:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;hide6.jpg?token&#x3D;AITVCCBKI5ILEQP36HE2XRS5AHCSK">
+<meta property="article:published_time" content="2019-06-06T03:52:02.000Z">
+<meta property="article:modified_time" content="2020-09-03T12:36:53.645Z">
+<meta property="article:author" content="晗桐">
+<meta property="article:tag" content="CS:APP">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;llht&#x2F;Homework-of-NJU&#x2F;master&#x2F;%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80&#x2F;%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9&#x2F;image&#x2F;first0.jpg?token&#x3D;AITVCCHRM55MVFQ2EYLA6YS5AG43E">
+
+<link rel="canonical" href="https://blog.hantong.me/csapp-bomblab/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>CS:APP 拆除二进制炸弹实验全解析 | 晗桐的个人博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">晗桐的个人博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">个人网站 | 思想驻留地</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>时间线</a>
+
+  </li>
+        <li class="menu-item menu-item-messagepad">
+
+    <a href="/messagepad/" rel="section"><i class="fa fa-fw fa-comment"></i>留言板</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://blog.hantong.me/csapp-bomblab/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="晗桐">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="晗桐的个人博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          CS:APP 拆除二进制炸弹实验全解析
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-06-06 11:52:02" itemprop="dateCreated datePublished" datetime="2019-06-06T11:52:02+08:00">2019-06-06</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-09-03 20:36:53" itemprop="dateModified" datetime="2020-09-03T20:36:53+08:00">2020-09-03</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index">
+                    <span itemprop="name">技术</span>
+                  </a>
+                </span>
+            </span>
+
+          
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="fa fa-comment-o"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/csapp-bomblab/#comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/csapp-bomblab/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-file-word-o"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>4.7k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-clock-o"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>4 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>去年暑假汇编语言课程作业，二进制炸弹破解的过程可谓苦尽甘来 现在把自己写的解析报告放上来, 纯原创, 没有参考任何关于此炸弹的解析 可能会与你拿到的炸弹有所不同, 本文只提供思路</p>
+<h3 id="第一关-字符串比较"><a href="#第一关-字符串比较" class="headerlink" title="第一关 字符串比较"></a>第一关 字符串比较</h3><ol>
+<li>通过<code>read_line</code>从标准输入流输入测试字符串 例如:<code>1234567</code></li>
+<li>进入<code>phase_</code>1函数</li>
+<li>进入<code>strings_not_equal</code>函数</li>
+<li>进入第一个<code>string_length</code>函数</li>
+<li>根据<code>string_length</code>函数返回值<code>%eax = 7</code>推断第二个<code>string_length</code>函数计算的是标准字符串(密码)的长度</li>
+<li>进入第二个<code>stirng_length</code>函数, 根据<code>add</code>与<code>jne</code>指令判断该函数通过遍历字符数组到’\0’来计算长度, 易知<code>%ebx</code>存储该数组的首地址</li>
+<li>遍历完成后得到<code>%eax</code>值为 41, 表明密码字符串长度为41,</li>
+<li><code>restart</code>程序并执行到第6步</li>
+<li>运用<code>print $ebx</code>得到起始地址<code>134521080</code></li>
+<li>通过<code>x/41cb</code>(x查看内存值 41表明单位个数 c以字符形式显示 b表明每次取一个字节长度) 指令 得到密码字符串的内容 <img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/first0.jpg?token=AITVCCHRM55MVFQ2EYLA6YS5AG43E" alt=""> <strong>第一关密钥:</strong> <code>For NASA, space is still a high priority.</code></li>
+</ol>
+<h3 id="第二关-循环"><a href="#第二关-循环" class="headerlink" title="第二关 循环"></a>第二关 循环</h3><ol>
+<li><p>进入<code>read_line</code>函数, 随便输入几个字符<code>asdasfa</code></p>
+</li>
+<li><p>进入, <code>read_six_numbers</code>函数</p>
+</li>
+<li><p>按s继续执行, 进入<code>sscanf</code>函数</p>
+</li>
+<li><p>继续按s可以看到<code>sscanf</code>函数的定义, 如下 <img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/second0.jpg?token=AITVCCFKRX432D5VZBAZLLC5AG5BS" alt=""></p>
+</li>
+<li><p>可知应该输入6个数字, 每个数字用空格隔开</p>
+</li>
+<li><p>重新进入<code>read_line</code>, 按n后输入数字1 2 3 4 5 6</p>
+</li>
+<li><p>继续执行到<code>sscanf</code>后, 易知<code>0x4(%esp)</code>取输入的第一个数字, 即1, 并与1比较,相等即继续执行</p>
+</li>
+<li><p>通过观察寄存器值的变化, 可以判断出<code>phase_2 + 54</code>到<code>phase_2 + 73</code>为循环过程, 遍历我们刚刚输入的6个数, 整理循环的运行逻辑如下, 以a1 – a6 表示他们.</p>
+<p>start = a1;<br>x = a2;<br>if (start == 1)</p>
+<pre><code>do {
+    start += start;
+    if ( start != x );
+        BOOM!!!;
+    x = a.next;
+} while ( x != a6 )</code></pre><p>else BOOM!!!!;</p>
+</li>
+</ol>
+<ol start="9">
+<li>根据上述算法依次类推, 即可得到应该输入的密码为 1 2 4 8 16 32 <img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/second1.jpg?token=AITVCCD37XGLMEHRDJPXZSC5AG5RA" alt=""> <strong>第二关密钥:</strong> <code>1 2 4 8 16 32</code></li>
+</ol>
+<h3 id="第三关-条件-分支"><a href="#第三关-条件-分支" class="headerlink" title="第三关 条件/分支"></a>第三关 条件/分支</h3><p>这一关通得很快, 因为有多解, 碰巧凑了一个, 感觉运气成分比较大 (逃 1. 同上, 进入<code>read_line</code>函数后随便输入一串字符<code>hahaha</code> 2. <code>si</code>进入<code>sscanf</code>函数, 再按一次s可以调出<code>sscanf</code>函数原型, 如下 <img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/third0.jpg?token=AITVCCDKMWCDUWTHCBJG3NC5AG52Q" alt=""> 3. 可知这关密码的格式是 整数空格字符空格整数 4. 退出重新进入, 输入测试字符串<code>1&lt;空格&gt;a&lt;空格&gt;2</code>( 体现运气的时刻到了 ) 5. 通过<code>cmpl $0x7, 0x4(%esp) &lt;换行&gt; ja blabla</code>语句可知, 第一个数字需要小于7 6. 通过<code>jmp *0x804a160 (, %eax, 4)</code>语句可知跳转目的语句与第一个数字的值有关 7. 猜测一共有7种破解密码, 我这里遇到的是第2种(第一个数字为1) 8. 跳转到<code>phase_3+113</code>, 将第二个整数与<code>0xbe</code>(即190 ) 作比较, 相等即可继续进行, 由此推断 第二个整数是<code>0xbe</code>, 即190 9. 观察跳转到<code>phase_3+323</code>后需要将<code>%al</code>中的值与字符参数做比较相等才可以完成密码匹配 10. 通过<code>print $al</code>查看寄存器中的值, 发现为113, 查ASCII码表, 发现为字符 ’q’ 那么, <code>1 q 190</code>即为解之一 <img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/third1.jpg?token=AITVCCAA3SGLW5QRCSRK4325AG54G" alt=""> <strong>第三关密钥 ( 之一 )</strong> <code>1 q 190</code></p>
+<h3 id="第四关-递归调用和栈"><a href="#第四关-递归调用和栈" class="headerlink" title="第四关 递归调用和栈"></a>第四关 递归调用和栈</h3><ol>
+<li><p>同样, 输入测试字符进入<code>sscanf</code>函数, 输入<code>s</code>指令观察到<code>sscanf</code>函数的原型 <img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/forth0.jpg?token=AITVCCEHKIS26PNQFMW5RCC5AG6LW" alt=""></p>
+</li>
+<li><p>重新进入, 输入测试字符1 2</p>
+</li>
+<li><p>根据<code>phase_4+78的cmp $0x5, %eax</code>语句以及<code>cmpl $0x5, 0x8(%esp)</code>语句 可以推断出以第一个数字为参数的<code>fun4</code>函数返回值应该为5, 第二个数字的值应该为5</p>
+</li>
+<li><p>进入<code>fun</code>函数, 观察<code>%eax, %ebx, %esi, %ecx</code>的变化</p>
+</li>
+<li><p>经过初步推断,<code>%ecx</code>存储函数参数值, <code>%eax</code>为返回值, <code>%ebx</code>与<code>%esi</code>分别存储函数中间值, 并赋初始值分别为0和14, <code>%edx</code>作为函数比较的中间值, 其作为中转站与<code>%eax</code>性质相同</p>
+</li>
+<li><p>通过分析比较代码, 可以大致推断出原函数的算法如下, 其中以<code>origin</code>作为<code>%esi</code>存储的值, 以<code>sub</code>作为<code>%ebx</code>的值, 以<code>center</code>作为<code>%eax</code>和<code>%edx</code>所存储的值, x为函数参数, 也就是我们输入的第一个数字</p>
+<p>origin = 14;<br>center = origin;<br>sub = 0;<br>fun4 ( int x ) {</p>
+<pre><code>center = ( origin – sub ) / 2 + sub;//函数的开头计算用于比较center值(%eax)
+if ( x == center ) 
+    return 0;// 对应汇编代码fun4 + 0 ---- fun4 + 33
+else if ( x &lt; center ) {                
+    center -= 1;                //汇编代码fun4 + 40
+    origin = center;            //汇编代码push%edx
+    return 2 * fun ( x );       //汇编代码 fun4 + 54 add指令
+}                               
+else if ( x &gt; center ) {              
+    center += 1;                //汇编代码fun4 + 71
+    sub = center;               //汇编代码 push %edx
+    return 2 * fun ( x ) + 1;   //汇编代码 fun4 + 84
+}</code></pre><p>}</p>
+</li>
+</ol>
+<ol start="7">
+<li>根据上述代码, 反向递推, 令最后返回的<code>%eax</code>值为5 <code>5 = 2 * 2 * ( 2 * 0 + 1 ) + 1</code>, 只有10可以满足左侧递推式 <img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/forth1.jpg?token=AITVCCBFI7NUKK2BZPGVZG25AG6L4" alt=""> <strong>第四关密钥</strong> <code>10 5</code></li>
+</ol>
+<h3 id="第五关-指针"><a href="#第五关-指针" class="headerlink" title="第五关 指针"></a>第五关 指针</h3><ol>
+<li>进入<code>read_line</code>函数后进入<code>phase5</code>中的<code>sscanf</code>函数, 按下<code>s</code>得到<code>sscanf</code>的函数原型 <img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/fifth0.jpg?token=AITVCCBGZ4UPXYTEDY7OURS5AG7NU" alt=""></li>
+<li>可知本关依然需要两个整数作为密钥</li>
+<li>重新进入, 输入测试数据1和2并观察函数执行情况</li>
+<li>根据下方的<code>mov &lt;地址&gt;(, %eax, 4 )</code>可以推断出输入的第一个整数作为地址的偏移量 即整形数组中的下标</li>
+<li>利用<code>gdb x/70cb &lt;地址&gt;</code>指令查看程序内部提供整形数组的所有值, 记录为表格如下 <img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/fifth1.jpg?token=AITVCCCSRY75VW4VBBYDIRS5AG7N4" alt=""></li>
+</ol>
+<p>下标</p>
+<p>0</p>
+<p>1</p>
+<p>2</p>
+<p>3</p>
+<p>4</p>
+<p>5</p>
+<p>6</p>
+<p>7</p>
+<p>8</p>
+<p>9</p>
+<p>10</p>
+<p>11</p>
+<p>12</p>
+<p>13</p>
+<p>14</p>
+<p>15</p>
+<p>值</p>
+<p>10</p>
+<p>2</p>
+<p>14</p>
+<p>7</p>
+<p>8</p>
+<p>12</p>
+<p>15</p>
+<p>11</p>
+<p>0</p>
+<p>4</p>
+<p>1</p>
+<p>13</p>
+<p>3</p>
+<p>9</p>
+<p>6</p>
+<p>5</p>
+<ol start="6">
+<li><p>根据后续的<code>jne $0xf</code>以及对起计数作用的<code>%edx</code>中的值可知, 该程序进行15次循环后使得<code>%eax</code>的值为15, 即通过15次对地址的重新计算得到最终值15, 下标为5, 按此逻辑 写出该程序段的大致算法如下.</p>
+<p>result = input ( 第一个参数 );<br>counter = 0;<br>sum = 0;<br>do {</p>
+<pre><code>counter ++;
+result = array [ result ];
+sum += result;</code></pre><p>while  ( result != 15 &amp;&amp; counter != 15 );</p>
+</li>
+</ol>
+<ol start="7">
+<li>按照上述算法, 从15开始递推 15次, 得到第一次result的值, 也就是我们需要输入的一个整数值为 5. <code>15 6 14 2 1 10 0 8 4 9 13 11 7 3 12 ➡ array [ 5 ] = 12</code></li>
+<li>又根据<code>cmp 0x8 ( %esp ), %ecx</code>可知, 第二个参数需要与<code>sum</code>值相同, 即所有遍历过的值的和, <code>15 + 6 + …… + 12 = 115</code> <img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/fifth2.jpg?token=AITVCCH4EEKKBLH2EJYATUS5AG7OE" alt=""> <strong>第五关密钥</strong> <code>5 115</code></li>
+</ol>
+<h3 id="第六关-链表-指针-结构"><a href="#第六关-链表-指针-结构" class="headerlink" title="第六关 链表/指针/结构"></a>第六关 链表/指针/结构</h3><ol>
+<li><p>进入<code>read_line</code>函数, 根据<code>phase_6 + 26</code>的<code>read_six_numbers</code>函数, 根据第二关已知, 需要输入6个数字.</p>
+</li>
+<li><p>重新进入函数, 并输入测试数字组<code>1 2 3 4 5 6</code></p>
+</li>
+<li><p>进入<code>phase</code>函数并跳过<code>read_six_numbers</code>函数, 就来到了本关的第一个循环判断, 如下 <img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/sixth0.jpg?token=AITVCCHMV2DVUKQLLAG3ND25AHBFY" alt=""> 以array数组表示用户输入的六个数字, 该部分代码可用以下算法来描述</p>
+<p>for ( int I = 0; I &lt; = 5 ; I ++ )<br>{</p>
+<pre><code>if ( array [ I ] &lt;= 6 )
+{
+    for ( int m = I + 1; m &lt;=5 ; m ++ )
+        if ( array [ I ] == array [ m ] )
+            BOOM!!! ;
+}
+else
+    BOOM!!! ;</code></pre><p>}</p>
+</li>
+</ol>
+<p>根据该段代码可知用户输入的每个数字都应该小于6并且各数字互不相等 4. <code>phase_6+104 ~ phase_6+115</code>是7减去原来每个数后重新存入源地址中, 算法不赘述 即<code>phase[x] = 7 – phase [7]</code> 5. <code>phase_6+124 ~ phase_6+167</code>是通过计算好的新数组, 将一个六结点链表初始地址每次移动<code>(array[x] – 1)</code>个8字节后得到值依次保存于栈帧中. 原理可用下述公式表示, 在这里观察到<code>0x8(%edx)</code>直接就是移动到下一个结点的首地址了, 而每个结点所占空间是12个字节, 推翻上述分析, 移动8个地址后即是下一个结点首地址, 从而构成单向链表. 即此部分是取第<code>array[x]</code>个结点值并依次保存 <img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/sixth1.jpg?token=AITVCCB6NVKTXSEBPNKXP2C5AHBGA" alt=""> 6. 通过<code>x/18dw</code>指令观察链表六个结点首元素的值: <img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/sixth2.jpg?token=AITVCCHXSJJJRIUFGA6HI225AHBGI" alt=""> 从上图可以看出:</p>
+<p>NODE1</p>
+<p>NODE2</p>
+<p>NODE3</p>
+<p>NODE4</p>
+<p>NODE5</p>
+<p>NODE6</p>
+<p>532</p>
+<p>168</p>
+<p>115</p>
+<p>732</p>
+<p>271</p>
+<p>964</p>
+<ol start="7">
+<li>下述代码作为此关的终极武器, 经过寄存器值的查看即跳转条件分析, 只有满足存入栈帧的结点降序排列才可躲避<code>phase_6+219</code>的爆炸函数 <img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/sixth3.jpg?token=AITVCCFFIKUT7V7TXEA5NGS5AHBGS" alt=""></li>
+<li>手动排序,<code>node6 &gt; node4 &gt; node1 &gt; node5 &gt; node2 &gt; node3</code> 整理得最终结果与输入值的对应关系如下</li>
+</ol>
+<p>step 2</p>
+<p>输入数据</p>
+<p>1</p>
+<p>3</p>
+<p>6</p>
+<p>2</p>
+<p>5</p>
+<p>4</p>
+<p>step 4</p>
+<p>7 -array[x]</p>
+<p>6</p>
+<p>4</p>
+<p>1</p>
+<p>5</p>
+<p>2</p>
+<p>3</p>
+<p>step6</p>
+<p>Node顺序(降序)</p>
+<p>6</p>
+<p>4</p>
+<p>1</p>
+<p>5</p>
+<p>3</p>
+<p>2</p>
+<p><img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/sixth4.jpg?token=AITVCCCZNUITALZAR4PGE3C5AHBG2" alt=""> <strong>第六关密钥</strong>: <code>1 3 6 2 5 4</code></p>
+<h3 id="隐藏关"><a href="#隐藏关" class="headerlink" title="隐藏关"></a>隐藏关</h3><ol>
+<li><p>进入<code>phase4</code>的<code>defused</code>函数, 观察到一条指令 <code>cmpl $0x6, 0x804c3cc</code> 使用<code>x</code>指令查看地址<code>0x804c3cc</code>中的值, 发现这个值记录的是输入字符串的个数 也就是在输入6个字符串, 即通过6个关卡后才可以跳转到下方的<code>sscanf</code>函数附近</p>
+</li>
+<li><p>猜测<code>defused</code>函数中的<code>sscanf</code>函数记录着有关隐藏关的密码</p>
+</li>
+<li><p>继续进行到第六关, 重新进入<code>phase_defused</code>函数, 进入<code>sscanf</code>函数使用s指令查看到 有关隐藏关密钥的格式, 即我们需要在第四关密钥后加一个字符串. <img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/hide0.jpg?token=AITVCCHWWV2IEAEURCPE5SS5AHCIS" alt=""></p>
+</li>
+<li><p>重新开始, 第四关密钥处输入测试字符串<code>10 5 haha</code>, 进入到第六关后的<code>phase_defused</code>函数, 进入其中的<code>strings_not_equal</code>函数.</p>
+</li>
+<li><p>按照第一关流程, 直接进入第二个<code>string_length</code>函数, 使用 <code>x/8cb $edx</code> 指令查看<code>%s</code>, 即第四关密钥后需要输入什么字符串 <img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/hide1.jpg?token=AITVCCCIT7EOAYZUGR3AHXS5AHCKU" alt=""> 据此写出<code>%s</code>的内容:<code>DrEvil</code>. 看起来像一个人名, 猜测这个彩蛋密钥应该算类似“炸弹制作者名单”</p>
+</li>
+<li><p>重新进入该<code>phase_defused</code>函数, 进行到<code>puts()</code>函数, 发现了进入隐藏关的提示语 <img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/hide2.jpg?token=AITVCCCXTQJYZBO7XLKU2525AHCM4" alt=""> 不慌, 继续执行进入<code>secret_phase</code>函数</p>
+</li>
+<li><p><code>read_line</code>函数, 输入一行字符串,<code>lstnb</code></p>
+</li>
+<li><p>进入到<code>strtol</code>函数, 该函数是将字符串转化为数字, <code>base</code>参数表明进制, 查看原型: <img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/hide3.jpg?token=AITVCCGEPJDSP7OQSPOHORC5AHCOU" alt=""> base = 10, 由此可知将输入数字转化为十进制整数</p>
+</li>
+<li><p>根据 <code>cmp $0x3e8, %eax / jbe</code> 可知输入一个小于等于1000的数字可以避免爆炸</p>
+</li>
+<li><p>重新开始, 输入1000, 进入<code>fun7</code>函数, 发现<code>fun7</code>又是一个递归函数<code>$%!&amp;^%!*#&amp;^%</code> <img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/hide4.jpg?token=AITVCCBVGYHG2PTDVSETOX25AHCPY" alt=""></p>
+</li>
+<li><p>经过一定观察, 发现<code>fun7</code>函数比第四关的<code>fun4</code>函数简单了不少, 长舒一口气 整理得到<code>fun7</code>函数所描述的算法如下</p>
+<p>middle = array [ 0 ]; //array首地址存储在%edx中, middle存储在middle中<br>fun7 ( input ) {      //input存储在%ecx中<br>   if ( input == middle )</p>
+<pre><code>return 0;</code></pre><p>   else if ( input &lt; middle )</p>
+<pre><code>middle = *( array + 1 ) return 2 * fun ( input ) ;</code></pre><p>   else </p>
+<pre><code>middle = *(array + 2) return 2 * fun ( input ) + 1;</code></pre><p>}</p>
+</li>
+</ol>
+<ol start="12">
+<li>根据<code>secretphase</code>函数中的<code>cmp 0x2 %eax</code>指令, 可知<code>fun7</code>返回值应为2 2 = 2 * ( 2 * 0 + 1) 进行两次递归调用, 利用x指令查看<code>array</code>中的部分值 <img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/hide5.jpg?token=AITVCCEWXRBQ57GUWV44IJC5AHCQ6" alt=""> 根据递推关系 <code>36 → 8 → 22</code> 可知需要用户输入的值为<code>22</code> <strong>隐藏关密钥:</strong> <code>22</code> 完结, 附图如下 <img src="https://raw.githubusercontent.com/llht/Homework-of-NJU/master/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%82%B8%E5%BC%B9/image/hide6.jpg?token=AITVCCBKI5ILEQP36HE2XRS5AHCSK" alt=""></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>晗桐
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="https://blog.hantong.me/csapp-bomblab/" title="CS:APP 拆除二进制炸弹实验全解析">https://blog.hantong.me/csapp-bomblab/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/zh-CN" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/CS-APP/" rel="tag"># CS:APP</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/booklist/" rel="prev" title="书单">
+      <i class="fa fa-chevron-left"></i> 书单
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/bayes-classify/" rel="next" title="基于贝叶斯定理的特定文本性质判断与分类">
+      基于贝叶斯定理的特定文本性质判断与分类 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#第一关-字符串比较"><span class="nav-number">1.</span> <span class="nav-text">第一关 字符串比较</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#第二关-循环"><span class="nav-number">2.</span> <span class="nav-text">第二关 循环</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#第三关-条件-分支"><span class="nav-number">3.</span> <span class="nav-text">第三关 条件&#x2F;分支</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#第四关-递归调用和栈"><span class="nav-number">4.</span> <span class="nav-text">第四关 递归调用和栈</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#第五关-指针"><span class="nav-number">5.</span> <span class="nav-text">第五关 指针</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#第六关-链表-指针-结构"><span class="nav-number">6.</span> <span class="nav-text">第六关 链表&#x2F;指针&#x2F;结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#隐藏关"><span class="nav-number">7.</span> <span class="nav-text">隐藏关</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="晗桐"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">晗桐</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">31</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">15</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/llht" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;llht" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:hantongliu@outlook.com" title="E-Mail → mailto:hantongliu@outlook.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/zh-CN" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      快速访问
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="/booklist" title="&#x2F;booklist">书单</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="/footprint-map" title="&#x2F;footprint-map">足迹</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">晗桐</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-area-chart"></i>
+    </span>
+    <span title="站点总字数">105k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">1:35</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.1.1
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el: '#valine-comments',
+      verify: false,
+      notify: true,
+      appId: 'jvA4ciAnRp02XTuSobk8znDa-gzGzoHsz',
+      appKey: 'NOK2Kbeecc2vA8L6VHwNmWEO',
+      placeholder: "欢迎交流~",
+      avatar: 'mm',
+      meta: guest,
+      pageSize: '10' || 10,
+      visitor: false,
+      lang: 'zh-cn' || 'zh-cn',
+      path: location.pathname,
+      recordIP: false,
+      serverURLs: ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

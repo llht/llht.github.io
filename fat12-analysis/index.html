@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="zh-CN,en,default">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.1.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/hantong.me-H.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/hantong.me-H.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/hantong.me-H.png">
+  <link rel="mask-icon" href="/images/hantong.me-H.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('https://blog.hantong.me').hostname,
+    root: '/',
+    scheme: 'Mist',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"hide","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"搜索","hits_empty":"没有找到相关搜索结果 ${query}","hits_stats":"找到约${hits}条结果（用时${time}ms）"}
+    },
+    localsearch: {"enable":false,"trigger":"manual","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="通过解析FAT12文件系统的文件逻辑存储，使用C语言模拟读取fat12.img磁盘镜像中的FAT.pdf文件，代码实现运行在Debian 10.0 32bit系统中">
+<meta property="og:type" content="article">
+<meta property="og:title" content="读取给定FAT12文件系统磁盘文件中的特定文件">
+<meta property="og:url" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;fat12-analysis&#x2F;index.html">
+<meta property="og:site_name" content="晗桐的个人博客">
+<meta property="og:description" content="通过解析FAT12文件系统的文件逻辑存储，使用C语言模拟读取fat12.img磁盘镜像中的FAT.pdf文件，代码实现运行在Debian 10.0 32bit系统中">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;wp-content&#x2F;uploads&#x2F;2019&#x2F;10&#x2F;1.png">
+<meta property="og:image" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;wp-content&#x2F;uploads&#x2F;2019&#x2F;10&#x2F;demo.png">
+<meta property="article:published_time" content="2019-10-16T06:51:18.000Z">
+<meta property="article:modified_time" content="2020-09-03T12:36:53.689Z">
+<meta property="article:author" content="晗桐">
+<meta property="article:tag" content="Linux">
+<meta property="article:tag" content="C语言">
+<meta property="article:tag" content="文件系统">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https:&#x2F;&#x2F;blog.hantong.me&#x2F;wp-content&#x2F;uploads&#x2F;2019&#x2F;10&#x2F;1.png">
+
+<link rel="canonical" href="https://blog.hantong.me/fat12-analysis/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>读取给定FAT12文件系统磁盘文件中的特定文件 | 晗桐的个人博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">晗桐的个人博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">个人网站 | 思想驻留地</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>时间线</a>
+
+  </li>
+        <li class="menu-item menu-item-messagepad">
+
+    <a href="/messagepad/" rel="section"><i class="fa fa-fw fa-comment"></i>留言板</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://blog.hantong.me/fat12-analysis/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="晗桐">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="晗桐的个人博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          读取给定FAT12文件系统磁盘文件中的特定文件
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-10-16 14:51:18" itemprop="dateCreated datePublished" datetime="2019-10-16T14:51:18+08:00">2019-10-16</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-09-03 20:36:53" itemprop="dateModified" datetime="2020-09-03T20:36:53+08:00">2020-09-03</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index">
+                    <span itemprop="name">技术</span>
+                  </a>
+                </span>
+            </span>
+
+          
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="fa fa-comment-o"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/fat12-analysis/#comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/fat12-analysis/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-file-word-o"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>10k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-clock-o"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>9 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>通过解析<code>FAT12</code>文件系统的文件逻辑存储，使用C语言模拟读取<code>fat12.img</code>磁盘镜像中的<code>FAT.pdf</code>文件，代码实现运行在<code>Debian 10.0 32bit</code>系统中</p>
+<a id="more"></a>
+
+<blockquote>
+<p>下载：文章中使用的镜像文件<code>fat12.img</code>、待提取的文件<code>FAT.pdf</code>、源代码<code>read.c</code>，以及本文的PDF版本，<a href="/wp-content/uploads/2019/10/hantong.me-FAT12-files.zip">此处下载</a></p>
+</blockquote>
+<h2 id="完整解析以及读取文件流程"><a href="#完整解析以及读取文件流程" class="headerlink" title="完整解析以及读取文件流程"></a>完整解析以及读取文件流程</h2><h3 id="1-解析磁盘前的准备"><a href="#1-解析磁盘前的准备" class="headerlink" title="1. 解析磁盘前的准备"></a>1. 解析磁盘前的准备</h3><ol>
+<li><p>首先查看文件的十六进制表示形式，打开vim，键入:</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">:%!xxd</span><br></pre></td></tr></table></figure>
+
+<p>即可查看文件，即<code>fat12.img</code>的十六进制表示形式，行数、偏置数以及文件内容和ASCII码解析均可看到</p>
+</li>
+<li><p>如果明确了想要查看内容的字符，直接使用</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">/keyword</span><br></pre></td></tr></table></figure>
+
+<p>即可找到直接跳转到对应内容，如果该字符出现多次，则使用<code>n</code>和<code>p</code>进行跳转</p>
+</li>
+</ol>
+<h3 id="2-FAT12格式文件系统基本分区（例）"><a href="#2-FAT12格式文件系统基本分区（例）" class="headerlink" title="2. FAT12格式文件系统基本分区（例）"></a>2. FAT12格式文件系统基本分区（例）</h3><p><img src="/wp-content/uploads/2019/10/1.png" alt=""></p>
+<center>FAT12文件系统的磁盘组织结构（并非本实验文件的分区）</center>
+
+<h3 id="3-解析保留扇区（Boot-Sector）"><a href="#3-解析保留扇区（Boot-Sector）" class="headerlink" title="3. 解析保留扇区（Boot Sector）"></a>3. 解析保留扇区（Boot Sector）</h3><table>
+<thead>
+<tr>
+<th>行号 偏移：二进制内容</th>
+<th>解析（注意小端存储）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>1</strong> 00000000</td>
+<td><code>00 02</code>: 每个扇区0x0200（512）个字节</td>
+</tr>
+<tr>
+<td><code>eb3c 906d 6b66 732e 6661 7400 0204 0100</code></td>
+<td><code>04</code>: 每个簇有4个扇区</td>
+</tr>
+<tr>
+<td></td>
+<td><code>0100</code>: 一共有1个保留扇区</td>
+</tr>
+<tr>
+<td><strong>2</strong> 00000010</td>
+<td><code>02</code>: FAT表的数量一共有2个</td>
+</tr>
+<tr>
+<td><code>0200 0200 10f8 0300 2000 4000 0000 0000</code></td>
+<td><code>00 02</code>: 最大根目录地址的数量为0x0200（512）个</td>
+</tr>
+<tr>
+<td></td>
+<td><code>00 10</code>: 总共有0x1000（4096）个扇区（所有4部分）</td>
+</tr>
+<tr>
+<td></td>
+<td><code>0300</code>: 每个FAT有3个扇区</td>
+</tr>
+<tr>
+<td></td>
+<td><code>2000</code>: 每磁轨扇区数为32个</td>
+</tr>
+<tr>
+<td></td>
+<td><code>4000</code>: 一共有64个头（heads）</td>
+</tr>
+<tr>
+<td><strong>3</strong> 00000020</td>
+<td><code>0000 0000</code>: FAT32的扇区数量，但是咱们是12</td>
+</tr>
+<tr>
+<td><code>0000 0000 8000 2931 37f4 004e 4f20 4e41</code></td>
+<td><code>29</code>: boot signature 表示还有三个有效部分</td>
+</tr>
+<tr>
+<td></td>
+<td><code>32 37f4</code>: volume id</td>
+</tr>
+<tr>
+<td><strong>4</strong> 00000030</td>
+<td>从上面的00一直到这行的第三个20是volume label</td>
+</tr>
+<tr>
+<td><code>4d45 2020 2020 4641 5431 3220 2020 0e1f</code></td>
+<td><code>20 4641 5431 3220 20</code>: ASCII表示的FAT12</td>
+</tr>
+<tr>
+<td></td>
+<td>后面的就没啥意义了不分析了</td>
+</tr>
+</tbody></table>
+<p>根据以上信息，我们经过计算可以得到该文件的实际分区信息：</p>
+<ul>
+<li>$保留扇区数 = 1$</li>
+<li>$FAT区的扇区数 = FAT数FAT数占用的扇区 = 23 = 6$</li>
+<li>$根目录区 = 最大根目录地址数32 / 512 = 512  32512 = 32$</li>
+<li>$数据区 = 总扇区数 - 前三部分扇区数 = 4096 -（1+6+32）= 4057$</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>扇区（Disk Sectors）</th>
+<th>区块名称</th>
+<th>大小</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0</td>
+<td>保留扇区（Boot Sector）</td>
+<td>512字节</td>
+</tr>
+<tr>
+<td>1 - 3</td>
+<td>FAT1区（FAT Table 1）</td>
+<td>3512字节</td>
+</tr>
+<tr>
+<td>4 - 6</td>
+<td>FAT2区（FAT Table 2）</td>
+<td>3512字节</td>
+</tr>
+<tr>
+<td>7 - 38</td>
+<td>根目录区（Root Directory）</td>
+<td>32512字节</td>
+</tr>
+<tr>
+<td>39 - 4095</td>
+<td>数据区（Data Area）</td>
+<td>4057512字节</td>
+</tr>
+</tbody></table>
+<h3 id="4-FAT区（File-Allocation-Table）"><a href="#4-FAT区（File-Allocation-Table）" class="headerlink" title="4. FAT区（File Allocation Table）"></a>4. FAT区（File Allocation Table）</h3><p>根据FAT文件格式分区信息，以及保留扇区的解析信息可知，每个扇区一共有 $512$ 个字节，那么FAT区的起始为第513个字节，即磁盘第二个扇区的起始处。</p>
+<p>那么对应于文件中的二进制信息，从第33行的第一个字节开始为FAT表的内容:<br>$$<br>33\ 00000200: f8ff\ ff00\ 0000\ 00f0\ ff07\ 8000\ 09a0\ 000b<br>$$<br>再根据分区信息，FAT表所展示的地址前两个是保留地址，从第三个地址开始才描述数据区的簇，所以FAT表中的地址序数与实际描述的数据簇的起始分区地址的关系如下：</p>
+<p>$$<br>物理起始分区地址= 39 + 4(FAT分区号 - 2) \\<br>举例: 39 = 39+2-2 (2是FAT表的第三个地址信息)<br>$$</p>
+<h3 id="5-解析根目录区中表示的-FAT-pdf-文件信息（entry）"><a href="#5-解析根目录区中表示的-FAT-pdf-文件信息（entry）" class="headerlink" title="5. 解析根目录区中表示的 FAT.pdf 文件信息（entry）"></a>5. 解析根目录区中表示的 FAT.pdf 文件信息（entry）</h3><p>根据分区信息，从第8个扇区开始为根目录区，每一个扇区共保存了16个文件信息（directory entrys），其中每一个都有32字节的信息（entry）来表示这个文件，为了了解 <strong>FAT.pdf</strong> 文件的存放，我们需要首先找到 <strong>FAT.pdf</strong> 文件信息（entry）存放哪里</p>
+<p>在寻找 <strong>FAT.pdf</strong> 的过程中，我们需要明确一下文件名规则</p>
+<ul>
+<li>文件名存放在每一个32字节信息的首8个字节处</li>
+<li>文件扩展名存放在之后的3个字节里</li>
+<li>文件名和文件扩展名都被存放为<strong>大写字母</strong></li>
+</ul>
+<p>我们目前已经明确了文件名，即 <strong>FAT.pdf</strong> ，并且我们已经得知了entry的前11字节表示，即：</p>
+<table>
+<thead>
+<tr>
+<th>位置（字节）</th>
+<th>0</th>
+<th>1</th>
+<th>2</th>
+<th>3</th>
+<th>4</th>
+<th>5</th>
+<th>6</th>
+<th>7</th>
+<th>8</th>
+<th>9</th>
+<th>10</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>内容</td>
+<td>F</td>
+<td>A</td>
+<td>T</td>
+<td>&lt;空格&gt;</td>
+<td>&lt;空格&gt;</td>
+<td>&lt;空格&gt;</td>
+<td>&lt;空格&gt;</td>
+<td>&lt;空格&gt;</td>
+<td>P</td>
+<td>D</td>
+<td>F</td>
+</tr>
+</tbody></table>
+<p>在vim中直接键入<code>\FAT     PDF</code>进行搜索，我们找到了该文件的信息（entry）如下，并且可以计算推得该信息处于磁盘的根目录区（Root Directory）：</p>
+<table>
+<thead>
+<tr>
+<th>行数</th>
+<th>偏置</th>
+<th>信息</th>
+<th>字符解释</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>227</td>
+<td>00000e20</td>
+<td><code>4641 5420 2020 2020 5044 4620 0064 276e</code></td>
+<td><code>FAT     PDF .d&#39;n</code></td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>行数</th>
+<th>偏置</th>
+<th>信息</th>
+<th>字符解释</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>228</td>
+<td>00000e30</td>
+<td><code>474f 474f 0000 276e 474f 0600 f391 1b00</code></td>
+<td><code>GOGO..&#39;nGO......</code></td>
+</tr>
+</tbody></table>
+<p>$$<br>22616512&gt;7处于FAT区的第一个扇区内<br>$$</p>
+<p>我们需要解析的关键信息其实就只有两个，存放文件的起始簇以及文件大小</p>
+<ul>
+<li>起始簇（First Logical Cluster）：<code>0600</code>：数字6</li>
+<li>文件大小（File Size）：<code>f391 1b00</code>：十六进制：0x1b91f3：十进制：1806835字节=1.723M字节</li>
+</ul>
+<p>预计存放该文件的簇数：<br>$$<br>[1806835(5124)]\approx883（个）<br>$$</p>
+<h3 id="6-计算FAT区与数据区对应关系"><a href="#6-计算FAT区与数据区对应关系" class="headerlink" title="6. 计算FAT区与数据区对应关系"></a>6. 计算FAT区与数据区对应关系</h3><p>根据第4部分以及第5部分，我们已经了解了足够的文件信息，接下来就是根据首个逻辑簇以及FAT区的链表关系，迭代查找出所有簇读取并放入文件中，<strong>读取文件的大致算法</strong>流程如下</p>
+<ol>
+<li>得到首个逻辑簇编号，即6</li>
+<li>计算出实际簇（及扇区）编号</li>
+<li>根据实际扇区编号跳转到数据区（Data Area）</li>
+<li>读取该簇的 $5124$ 字节存入到文件中</li>
+<li>根据逻辑簇编号找到FAT区的对应位置并读取该位置的逻辑簇编号</li>
+<li>如果逻辑簇编号表示达到文件终点，则结束读取，否则跳转到2</li>
+</ol>
+<p>在实现上述的各种跳转时，需要注意以下<strong>要点</strong>：</p>
+<ul>
+<li><p>得到的逻辑簇号表示的是指数（Index），如果逻辑簇号是6，那么指的是FAT表中的第7个信息(entry)</p>
+</li>
+<li><p>如果需要找FAT表Index为n的信息（即<strong>第</strong>n+1个地址信息），则12bit的entry从高位到低位依次:</p>
+<ul>
+<li>如果n是奇数：<ul>
+<li><strong>FAT表起始位置 + (3 * n)/2</strong>的高四位</li>
+<li><strong>FAT表起始位置 + (3 * n)/2 + 1</strong> 的八位</li>
+</ul>
+</li>
+<li>如果n是偶数：<ul>
+<li><strong>FAT表起始位置 + （(3 * (n+1)/2 ）</strong>的低四位</li>
+<li><strong>FAT表起始位置 + （(3 * (n+1)/2 - 1）</strong>的八位</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>本次查找中只涉及到达文件末尾这一特殊情况，即12bit逻辑地址为0xFF8-0xFFF时读取结束</p>
+</li>
+<li><p>逻辑簇编号对应于簇的第一个区的指数（Index）：4（逻辑簇编号 - 2）+ 39<br>比如，如果编号是6，即所指簇的第一个扇区是编号为55的扇区，即整个文件系统的第56个扇区</p>
+</li>
+<li><p>FAT区中的簇指数（FAT Entry）所对应的表示信息如下：</p>
+<table>
+<thead>
+<tr>
+<th>数值</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0x000</td>
+<td>未使用的簇（Unused）</td>
+</tr>
+<tr>
+<td>0xFF0-0xFF6</td>
+<td>保留簇（Reserved）</td>
+</tr>
+<tr>
+<td>0xFF7</td>
+<td>坏簇（Bad Cluster）</td>
+</tr>
+<tr>
+<td>0xFF8 - 0xFFF</td>
+<td>文件最后一个簇（Last Cluster in a File）</td>
+</tr>
+<tr>
+<td>其他</td>
+<td>下一个簇指数（Next Cluster Index）</td>
+</tr>
+</tbody></table>
+<p>那么，判断是否读到末尾，只需判断簇指数是否为<code>0XFF8~9xFFF</code>即可</p>
+</li>
+</ul>
+<h3 id="7-读取流程设计"><a href="#7-读取流程设计" class="headerlink" title="7. 读取流程设计"></a>7. 读取流程设计</h3><p>根据上述的大致算法，再将我们需要的读取文件等操作加入，即可得到完整的流程：</p>
+<ol start="0">
+<li>读取<code>fat12.img</code>文件，扫描文件后读入一个足够大的字符数组内</li>
+<li>得到首个逻辑簇编号，即6</li>
+<li>计算出实际簇（及初始扇区）编号</li>
+<li>根据实际扇区编号跳转到数据区（Data Area）</li>
+<li>读取该扇区起始的四个扇区（即一个簇）的 $5124$ 字节存入到足够大的<strong>字符数组</strong>中</li>
+<li>根据逻辑簇编号找到FAT区的对应位置并读取该位置的逻辑簇编号如果逻辑簇编号表示达到文件终点，则结束读取，否则跳转到2</li>
+<li>将文件写入新建的文件<code>FAT.pdf</code>内即完成了读取</li>
+</ol>
+<h3 id="8-代码编写"><a href="#8-代码编写" class="headerlink" title="8. 代码编写"></a><strong>8. 代码编写</strong></h3><p>主要函数和数据结构树如下：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">FAT12_info</span>&#123;</span>...&#125;   <span class="comment">//info for structure of FAT12          </span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">FAT_PDF_info</span>&#123;</span>...&#125; <span class="comment">//info for extracting FAT.pdf</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">char</span> fat_img_content[]   <span class="comment">//char array for fat12.img</span></span><br><span class="line"><span class="keyword">char</span> fat_pdf_content[]   <span class="comment">//char array for FAT.pdf</span></span><br><span class="line">void main() -- void read_disk()//fat12.img to fat_img_content[]</span><br><span class="line">			-- <span class="function"><span class="keyword">void</span> <span class="title">extract_content</span><span class="params">()</span><span class="comment">//take to fat_pdf_content[]</span></span></span><br><span class="line">    			-- void examine_disk()</span><br><span class="line">    			-- <span class="function"><span class="keyword">void</span> <span class="title">examine_fat_pdf</span><span class="params">()</span></span></span><br><span class="line">    			-- void reach_end(int index)</span><br><span class="line">    			-- <span class="function"><span class="keyword">void</span> <span class="title">next_cluster_index</span><span class="params">(<span class="keyword">int</span> index)</span></span></span><br><span class="line">	 		-- void save_file()//fat_pdf_content to FAT.pdf</span><br></pre></td></tr></table></figure>
+
+<p>首先，设计两个结构数据类型分别保存文件结构和文件<code>FAT.pdf</code>的信息：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//必要的FAT12结构信息</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">FAT12_info</span>&#123;</span></span><br><span class="line">	<span class="comment">//necessary info for understanding structure of img file</span></span><br><span class="line">	<span class="keyword">int</span> bytes_per_sector;</span><br><span class="line">	<span class="keyword">int</span> sectors_per_cluster;</span><br><span class="line">	<span class="keyword">int</span> number_reserved_cluster; </span><br><span class="line">	<span class="keyword">int</span> number_fat;</span><br><span class="line">	<span class="keyword">int</span> number_directory_entry;</span><br><span class="line">	<span class="keyword">int</span> number_sector;</span><br><span class="line">	<span class="keyword">int</span> sectors_per_fat;</span><br><span class="line">&#125;fat12_info;</span><br><span class="line"></span><br><span class="line"><span class="comment">//必要的FAT.pdf文件信息</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">FAT_PDF_info</span>&#123;</span></span><br><span class="line">	<span class="comment">//necessary info for extracting FAT.pdf</span></span><br><span class="line">	<span class="keyword">int</span> start_cluster;</span><br><span class="line">	<span class="keyword">unsigned</span> file_size;</span><br><span class="line">&#125;fat_pdf_info;</span><br></pre></td></tr></table></figure>
+
+<p>设计了三个主函数，<code>void read_disk()</code>、<code>void extract_content()</code>、<code>void save_file()</code>分别负责读取磁盘到数组中，取出文件内容，保存文件到数组中：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	read_disk();  		<span class="comment">//read the original disk</span></span><br><span class="line">	extract_content();	<span class="comment">//extract the content of FAT.pdf</span></span><br><span class="line">	save_file();		<span class="comment">//save the content to FAT.pdf</span></span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>读取文件函数<code>read_disk()</code>负责打开文件后将文件的每个字节一个一个拿出来存到字符数组<code>static char fat_img_content[MAX_DISK_SIZE]</code>中：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">read_disk</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	FILE *fat_img_file;</span><br><span class="line">	fat_img_file = fopen(<span class="string">"fat12.img"</span>, <span class="string">"r"</span>);	</span><br><span class="line"></span><br><span class="line">	<span class="comment">//read to array		</span></span><br><span class="line">	<span class="keyword">int</span> i;</span><br><span class="line">	<span class="keyword">for</span>(i = <span class="number">0</span>; !feof(fat_img_file); i++)</span><br><span class="line">	&#123;</span><br><span class="line">		fread(&amp;fat_img_content[i], <span class="number">1</span>, <span class="number">1</span>, fat_img_file);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">"finish reading fat12.img\n"</span>);</span><br><span class="line">	fclose(fat_img_file);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>取文件内容函数负责将我们需要的<code>FAT.pdf</code>文件按照FAT区规定的链表顺序依次取出来存入字符数组<code>static char fat_pdf_content[]</code>中：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">extract_content</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	examine_disk();              <span class="comment">//examine the disk content to understant the structure</span></span><br><span class="line">	examine_fat_pdf();           <span class="comment">//exmine the disk to get infor about FAT.pdf</span></span><br><span class="line"></span><br><span class="line">	<span class="keyword">int</span> logic_cluster_index = <span class="number">6</span>; <span class="comment">//first logical sector</span></span><br><span class="line">	<span class="keyword">int</span> pdf_pointer = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">"start to extract FAT.pdf, start from cluster %d:\n"</span>, fat_pdf_info.start_cluster);</span><br><span class="line">	<span class="keyword">while</span>(<span class="number">1</span>)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="comment">//take 1 cluster out of the disk</span></span><br><span class="line">		<span class="keyword">int</span> sector_start_index = (<span class="number">39</span> + <span class="number">4</span>*(logic_cluster_index - <span class="number">2</span>)&amp;<span class="number">0xfff</span>) * fat12_info.bytes_per_sector;</span><br><span class="line">		<span class="keyword">int</span> i;</span><br><span class="line">		<span class="keyword">for</span>(i = <span class="number">1</span>; i &lt;= fat12_info.bytes_per_sector * fat12_info.sectors_per_cluster; ++i)</span><br><span class="line">		&#123;	</span><br><span class="line">			fat_pdf_content[pdf_pointer++] = fat_img_content[sector_start_index++];</span><br><span class="line">		&#125;</span><br><span class="line">		</span><br><span class="line">		<span class="comment">//if reach the end of the file	</span></span><br><span class="line">		<span class="keyword">if</span>(reach_end(logic_cluster_index))</span><br><span class="line">		&#123;	</span><br><span class="line">			<span class="built_in">printf</span>(<span class="string">"end\n"</span>);</span><br><span class="line">			<span class="built_in">printf</span>(<span class="string">"finish extracting FAT.pdf\n"</span>);</span><br><span class="line">			<span class="keyword">break</span>;	</span><br><span class="line">		&#125;</span><br><span class="line">		</span><br><span class="line">		<span class="comment">//calculate next cluster index number</span></span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">"%03x-&gt;"</span>, logic_cluster_index);</span><br><span class="line">		logic_cluster_index = next_cluster_index(logic_cluster_index);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在提取之前，首先需要对文件的结构进行分析，在上述函数中，我们调用了函数<code>void examine_disk()</code>获取必要的文件信息以方便提取，并存到结构<code>fat12_info</code>中：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">examine_disk</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="comment">//examine the disk and get necessary info for structure of img file</span></span><br><span class="line">	fat12_info.bytes_per_sector = (((<span class="keyword">unsigned</span>)fat_img_content[<span class="number">12</span>]) &lt;&lt; <span class="number">8</span>) + fat_img_content[<span class="number">11</span>];</span><br><span class="line">	fat12_info.sectors_per_cluster = fat_img_content[<span class="number">13</span>];</span><br><span class="line">	fat12_info.number_reserved_cluster = (((<span class="keyword">unsigned</span>)fat_img_content[<span class="number">15</span>]) &lt;&lt; <span class="number">8</span>) + fat_img_content[<span class="number">14</span>]; </span><br><span class="line">	fat12_info.number_fat = fat_img_content[<span class="number">16</span>];</span><br><span class="line">	fat12_info.number_directory_entry = (((<span class="keyword">unsigned</span>)fat_img_content[<span class="number">18</span>]) &lt;&lt; <span class="number">8</span>) + fat_img_content[<span class="number">17</span>];</span><br><span class="line">	fat12_info.number_sector = (((<span class="keyword">unsigned</span>)fat_img_content[<span class="number">20</span>]) &lt;&lt; <span class="number">8</span>) + fat_img_content[<span class="number">19</span>];</span><br><span class="line">	fat12_info.sectors_per_fat = (((<span class="keyword">unsigned</span>)fat_img_content[<span class="number">23</span>]) &lt;&lt; <span class="number">8</span>) + fat_img_content[<span class="number">22</span>];</span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">"finish examining the disk and get info\n"</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>接着调用<code>void examine_fat_pdf()</code>函数，依次扫过每一个entry，找到<code>FAT.pdf</code>的内容后，提取必要信息到<code>fat_pdf_info</code>结构中：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">examine_fat_pdf</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="comment">//scan through Root Directory Section for FAT.pdf</span></span><br><span class="line">	<span class="keyword">int</span> sectors_before_directory_section = fat12_info.number_reserved_cluster + (fat12_info.number_fat * fat12_info.sectors_per_fat);</span><br><span class="line">	<span class="keyword">int</span> head_of_directory_section = sectors_before_directory_section * fat12_info.bytes_per_sector;</span><br><span class="line">	<span class="keyword">int</span> end_of_directory_section = head_of_directory_section + fat12_info.number_directory_entry * BYTES_FILE_ENTRY;</span><br><span class="line">	<span class="keyword">char</span> file_entry[BYTES_FILE_ENTRY];</span><br><span class="line"></span><br><span class="line">	<span class="keyword">for</span>(<span class="keyword">int</span> i = head_of_directory_section; i &lt; end_of_directory_section; i += BYTES_FILE_ENTRY)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="keyword">for</span>(<span class="keyword">int</span> j = i; j &lt; i+BYTES_FILE_ENTRY; ++j)</span><br><span class="line">			<span class="comment">//get the file entry</span></span><br><span class="line">			file_entry[j - i] = fat_img_content[j];</span><br><span class="line"></span><br><span class="line">		<span class="comment">//judge whether it's FAT.pdf</span></span><br><span class="line">		<span class="keyword">int</span> file_name = file_entry[<span class="number">0</span>] == <span class="string">'F'</span> &amp;&amp; file_entry[<span class="number">1</span>] == <span class="string">'A'</span> &amp;&amp; file_entry[<span class="number">2</span>] == <span class="string">'T'</span>;</span><br><span class="line">		<span class="keyword">int</span> file_type = file_entry[<span class="number">8</span>] == <span class="string">'P'</span> &amp;&amp; file_entry[<span class="number">9</span>] == <span class="string">'D'</span> &amp;&amp; file_entry[<span class="number">10</span>] == <span class="string">'F'</span>;</span><br><span class="line">		<span class="keyword">if</span>(file_name &amp;&amp; file_type)</span><br><span class="line">		&#123;</span><br><span class="line">			<span class="comment">//take out info</span></span><br><span class="line">			fat_pdf_info.start_cluster = (((<span class="keyword">unsigned</span>)file_entry[<span class="number">27</span>]) &lt;&lt; <span class="number">8</span>) + file_entry[<span class="number">26</span>];</span><br><span class="line">			fat_pdf_info.file_size = (((<span class="keyword">unsigned</span>)file_entry[<span class="number">31</span>]) &lt;&lt; <span class="number">24</span>) + (((<span class="keyword">unsigned</span>)file_entry[<span class="number">30</span>] + <span class="number">1</span>) &lt;&lt; <span class="number">16</span>) </span><br><span class="line">					       +  (((<span class="keyword">unsigned</span>)file_entry[<span class="number">29</span>] + <span class="number">1</span>) &lt;&lt; <span class="number">8</span>) + (<span class="keyword">unsigned</span>)file_entry[<span class="number">28</span>];			 </span><br><span class="line">			<span class="keyword">break</span>;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">"starting cluster:%d, file size:%u bytes\n"</span>, fat_pdf_info.start_cluster, fat_pdf_info.file_size);	</span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">"finish examining info of FAT.pdf\n"</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>提取文件内容用到的函数包括两个函数<code>int reach_end(int index)</code>和<code>int next_cluster_index(int index)</code>分别用于判断簇指数是否为文件末尾以及根据FAT区计算下一个簇指数：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">reach_end</span><span class="params">(<span class="keyword">int</span> index)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="comment">//examine whether index marks the end of file</span></span><br><span class="line">	<span class="keyword">if</span>( ((index&amp;<span class="number">0x00000fff</span>) &gt;= <span class="number">0xff8</span>) &amp;&amp; ((index&amp;<span class="number">0x00000fff</span>) &lt;= <span class="number">0xfff</span>))</span><br><span class="line">		<span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">	<span class="comment">//not reach end</span></span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">next_cluster_index</span><span class="params">(<span class="keyword">int</span> index)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> next_index = <span class="number">0</span>;</span><br><span class="line">    	<span class="keyword">unsigned</span> DATA_SECTOR_SIZE = fat12_info.bytes_per_sector;</span><br><span class="line">	</span><br><span class="line">	<span class="keyword">if</span>(index%<span class="number">2</span> == <span class="number">1</span>)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="comment">//index is odd</span></span><br><span class="line">		<span class="comment">//low 4 bits</span></span><br><span class="line">		next_index = ((<span class="keyword">unsigned</span>)fat_img_content[DATA_SECTOR_SIZE*<span class="number">1</span> + (<span class="number">3</span>*index)/<span class="number">2</span>] &amp;<span class="number">0xf0</span>);</span><br><span class="line">		next_index &gt;&gt;= <span class="number">4</span>;</span><br><span class="line">		<span class="comment">//high 8 bits</span></span><br><span class="line">		next_index |= ((<span class="keyword">unsigned</span>)fat_img_content[DATA_SECTOR_SIZE*<span class="number">1</span> + (<span class="number">3</span>*index)/<span class="number">2</span> + <span class="number">1</span>] &lt;&lt; <span class="number">4</span>);</span><br><span class="line">		<span class="keyword">return</span> next_index &amp; <span class="number">0x00000fff</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">else</span></span><br><span class="line">	&#123;</span><br><span class="line">		<span class="comment">//index is even</span></span><br><span class="line">		<span class="comment">//high 4 bits</span></span><br><span class="line">		next_index = (<span class="keyword">unsigned</span>)fat_img_content[DATA_SECTOR_SIZE*<span class="number">1</span> + (<span class="number">3</span>*(index + <span class="number">1</span>))/<span class="number">2</span>] &amp; <span class="number">0x0f</span>;</span><br><span class="line">		next_index &lt;&lt;= <span class="number">8</span>;	</span><br><span class="line">		<span class="comment">//low 8 bits</span></span><br><span class="line">		next_index |= (<span class="keyword">unsigned</span>)fat_img_content[DATA_SECTOR_SIZE*<span class="number">1</span> + (<span class="number">3</span>*(index + <span class="number">1</span>))/<span class="number">2</span> <span class="number">-1</span>] &amp; <span class="number">0xff</span>;</span><br><span class="line">		<span class="keyword">return</span> next_index &amp; <span class="number">0x00000fff</span>;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>最后写入内容到文件的函数为<code>void save_file()</code>，需要注意的是，<strong>写入文件的字节数需要与我们之前根目录区解析的文件大小相同，在这里为</strong><code>1806835</code>字节，同时，每次写入一个簇来加快文件写入的速率：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">save_file</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	FILE* fat_pdf;</span><br><span class="line">	<span class="keyword">int</span> bytes_per_cluster = fat12_info.bytes_per_sector * fat12_info.sectors_per_cluster;</span><br><span class="line">	fat_pdf = fopen(<span class="string">"FAT.pdf"</span>, <span class="string">"w"</span>);	</span><br><span class="line">	<span class="keyword">int</span> i;</span><br><span class="line">	<span class="comment">//write except for last cluster	</span></span><br><span class="line">	<span class="keyword">for</span>(i = <span class="number">0</span>;  i &lt; fat_pdf_info.file_size - bytes_per_cluster; i += bytes_per_cluster)</span><br><span class="line">	&#123;	</span><br><span class="line">		fwrite(&amp;fat_pdf_content[i], <span class="number">1</span>, bytes_per_cluster, fat_pdf);	       &#125;</span><br><span class="line">	<span class="comment">//write the last cluster</span></span><br><span class="line">	fwrite(&amp;fat_pdf_content[i], <span class="number">1</span>, fat_pdf_info.file_size - i, fat_pdf);</span><br><span class="line"></span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">"finish writing in FAT.pdf\n"</span>);</span><br><span class="line">	fclose(fat_pdf);	</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>代码存储在<code>read.c</code>，编译执行后，使用<code>xpdf FAT.pdf</code>打开已读取的文件即可：</p>
+<p><img src="/wp-content/uploads/2019/10/demo.png" alt=""></p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ul>
+<li><a href="https://en.wikipedia.org/wiki/Design_of_the_FAT_file_system" target="_blank" rel="noopener">Design of the FAT file system - Wikipedia</a></li>
+<li><a href="http://www.disc.ua.es/~gil/FAT12Description.pdf" target="_blank" rel="noopener">An overview of FAT12 The File Allocation Table (FAT) -  Rose-Hulman Institute of Technology - Spring 2004-2005 - Computer Science and Software Engineering - Prof. Archana Chidanandan </a></li>
+<li><a href="https://www.youtube.com/watch?v=V2Gxqv3bJCk&t=2s" target="_blank" rel="noopener">File Allocation Table - YouTube</a></li>
+<li>方元，彭成磊，<em>数字系统II补充教材</em>，南京大学</li>
+<li><a href="https://stackoverflow.com/questions/13002367/write-a-file-byte-by-byte-in-c-using-fwrite" target="_blank" rel="noopener">Write a file byte by byte in C using fwrite() - Stack Overflow</a></li>
+<li><a href="https://stackoverflow.com/q/6093224" target="_blank" rel="noopener">Reading a binary file 1 byte at a time - Stack Overflow</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>晗桐
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="https://blog.hantong.me/fat12-analysis/" title="读取给定FAT12文件系统磁盘文件中的特定文件">https://blog.hantong.me/fat12-analysis/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/zh-CN" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Linux/" rel="tag"># Linux</a>
+              <a href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag"># C语言</a>
+              <a href="/tags/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/" rel="tag"># 文件系统</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/csapp-datalab/" rel="prev" title="CS:APP-Datalab 题目及源码">
+      <i class="fa fa-chevron-left"></i> CS:APP-Datalab 题目及源码
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/ics-chapter2-solutions/" rel="next" title="《计算机系统基础》第二版 袁春风 第二章部分课后习题 参考解答">
+      《计算机系统基础》第二版 袁春风 第二章部分课后习题 参考解答 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#完整解析以及读取文件流程"><span class="nav-number">1.</span> <span class="nav-text">完整解析以及读取文件流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-解析磁盘前的准备"><span class="nav-number">1.1.</span> <span class="nav-text">1. 解析磁盘前的准备</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-FAT12格式文件系统基本分区（例）"><span class="nav-number">1.2.</span> <span class="nav-text">2. FAT12格式文件系统基本分区（例）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-解析保留扇区（Boot-Sector）"><span class="nav-number">1.3.</span> <span class="nav-text">3. 解析保留扇区（Boot Sector）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-FAT区（File-Allocation-Table）"><span class="nav-number">1.4.</span> <span class="nav-text">4. FAT区（File Allocation Table）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-解析根目录区中表示的-FAT-pdf-文件信息（entry）"><span class="nav-number">1.5.</span> <span class="nav-text">5. 解析根目录区中表示的 FAT.pdf 文件信息（entry）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-计算FAT区与数据区对应关系"><span class="nav-number">1.6.</span> <span class="nav-text">6. 计算FAT区与数据区对应关系</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-读取流程设计"><span class="nav-number">1.7.</span> <span class="nav-text">7. 读取流程设计</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-代码编写"><span class="nav-number">1.8.</span> <span class="nav-text">8. 代码编写</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考资料"><span class="nav-number">2.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="晗桐"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">晗桐</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">31</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">15</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/llht" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;llht" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:hantongliu@outlook.com" title="E-Mail → mailto:hantongliu@outlook.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/zh-CN" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      快速访问
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="/booklist" title="&#x2F;booklist">书单</a>
+        </li>
+        <li class="links-of-blogroll-item">
+          <a href="/footprint-map" title="&#x2F;footprint-map">足迹</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">晗桐</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-area-chart"></i>
+    </span>
+    <span title="站点总字数">105k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">1:35</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.1.1
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+      
+<script type="text/x-mathjax-config">
+
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$', '$'], ['\\(', '\\)'] ],
+      processEscapes: true,
+      skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+    },
+    TeX: {
+      equationNumbers: {
+        autoNumber: 'AMS'
+      }
+    }
+  });
+
+  MathJax.Hub.Register.StartupHook('TeX Jax Ready', function() {
+    MathJax.InputJax.TeX.prefilterHooks.Add(function(data) {
+      if (data.display) {
+        var next = data.script.nextSibling;
+        while (next && next.nodeName.toLowerCase() === '#text') {
+          next = next.nextSibling;
+        }
+        if (next && next.nodeName.toLowerCase() === 'br') {
+          next.parentNode.removeChild(next);
+        }
+      }
+    });
+  });
+
+  MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for (i = 0; i < all.length; i += 1) {
+      element = document.getElementById(all[i].inputID + '-Frame').parentNode;
+      if (element.nodeName.toLowerCase() == 'li') {
+        element = element.parentNode;
+      }
+      element.classList.add('has-jax');
+    }
+  });
+</script>
+<script>
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-AMS-MML_HTMLorMML', () => {
+    MathJax.Hub.Typeset();
+  }, window.MathJax);
+</script>
+
+    
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el: '#valine-comments',
+      verify: false,
+      notify: true,
+      appId: 'jvA4ciAnRp02XTuSobk8znDa-gzGzoHsz',
+      appKey: 'NOK2Kbeecc2vA8L6VHwNmWEO',
+      placeholder: "欢迎交流~",
+      avatar: 'mm',
+      meta: guest,
+      pageSize: '10' || 10,
+      visitor: false,
+      lang: 'zh-cn' || 'zh-cn',
+      path: location.pathname,
+      recordIP: false,
+      serverURLs: ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>
